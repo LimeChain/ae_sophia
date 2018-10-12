@@ -1,0 +1,56 @@
+contract ERC721 =
+  record state = { totalSupply      : int,
+				   name             : string,
+				   symbol           : string,
+				   ownedTokensCount : map(address, int),
+				   tokenOwner       : map(int, address),
+				   tokenApprovals   : map(int, address) }
+
+	//todo add to state _operatorApprovals
+  public stateful function  init() = {
+    totalSupply = 0,
+  	name = "NFT",
+  	symbol = "AE",
+  	ownedTokensCount = {},
+  	tokenOwner = {},
+  	tokenApprovals = {}}
+
+  public stateful function name() : string = state.name
+
+  public stateful function symbol() : string = state.symbol
+
+  public stateful function totalSupply() : int = state.totalSupply
+
+  public stateful function balanceOf(tokenOwner : address) : int = lookupByAddress(tokenOwner, state.ownedTokensCount, 0)
+
+  public stateful function ownerOf(tokenId : int) = lookupById(tokenId, state.tokenOwner, #ff00)
+
+  public stateful function mint(tokenId : int) : bool = 
+    put(state{tokenOwner = state.tokenOwner{[tokenId] = Call.caller}})
+    put(state{ownedTokensCount[Call.caller] = add(lookupByAddress(Call.caller, state.ownedTokensCount, 0), 1)})
+    true
+	
+  private function lookupByAddress(k : address, m, v) =
+  	switch(Map.lookup(k, m))
+	    None    => v
+	    Some(x) => x
+
+  private function lookupById(k : int, m, v) =
+  	switch(Map.lookup(k, m))
+	    None    => v
+	    Some(x) => x
+
+  private function add(_a : int, _b : int) : int =
+    let c : int = _a + _b
+    // require(c >= _a, "Error") // this line can't be compiled !?!
+    c
+
+  // private function require(b : bool, err : string) =
+    // if(!b) abort(err)
+
+// function approve(address _to, uint256 _tokenId);
+// function takeOwnership(uint256 _tokenId);
+// function transfer(address _to, uint256 _tokenId);
+// function tokenOfOwnerByIndex(address _owner, uint256 _index) constant returns (uint tokenId);
+// // Token metadata
+// function tokenMetadata(uint256 _tokenId) constant returns (string infoUrl);
