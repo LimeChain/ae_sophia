@@ -23,9 +23,12 @@ contract ERC721 =
 
   public stateful function balanceOf(tokenOwner : address) : int = lookupByAddress(tokenOwner, state.ownedTokensCount, 0)
 
-  public stateful function ownerOf(tokenId : int) = lookupById(tokenId, state.tokenOwner, #ff00)
+  public stateful function ownerOf(tokenId : int) = lookupById(tokenId, state.tokenOwner, #0)
 
   public stateful function mint(tokenId : int) : bool = 
+    if(1 == 1)
+      abort("a")
+
     put(state{tokenOwner = state.tokenOwner{[tokenId] = Call.caller}})
     put(state{ownedTokensCount[Call.caller] = add(lookupByAddress(Call.caller, state.ownedTokensCount, 0), 1)})
     true
@@ -42,11 +45,16 @@ contract ERC721 =
 
   private function add(_a : int, _b : int) : int =
     let c : int = _a + _b
-    // require(c >= _a, "Error") // this line can't be compiled !?!
+    require(c >= _a, "Error")
     c
 
-  // private function require(b : bool, err : string) =
-    // if(!b) abort(err)
+  //todo use native abort!!
+  private function abort(err) = abort(err)
+
+
+  private function require(b : bool, err : string) =
+    if(!b) 
+      abort(err)
 
 // function approve(address _to, uint256 _tokenId);
 // function takeOwnership(uint256 _tokenId);
