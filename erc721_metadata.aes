@@ -32,7 +32,6 @@ contract ERC721 =
     onlyTokenOwner(Call.caller, tokenId)
 
     put(state{tokenURIs = state.tokenURIs{[tokenId] = uri}})
-
     true  
 
   public stateful function approve(tokenId : int, to : address) : bool =
@@ -41,7 +40,6 @@ contract ERC721 =
     require(isApprovedForAll(Call.caller, to), "Caller isn't approved")
     
     put(state{tokenApprovals = state.tokenApprovals{[tokenId] = to}})
-
     true
 
   public stateful function transferFrom(from : address, to : address, tokenId : int) : bool =
@@ -50,7 +48,6 @@ contract ERC721 =
     clearApproval(from, tokenId)
     removeTokenFrom(from, tokenId)
     addTokenTo(to, tokenId)
-
     true
 
   public stateful function setApprovalForAll(to : address, approved : bool) : bool =

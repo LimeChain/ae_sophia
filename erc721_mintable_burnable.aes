@@ -32,7 +32,6 @@ contract ERC721 =
 
     put(state{tokenOwner = state.tokenOwner{[tokenId] = to}})
     put(state{ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
-
     true
 
   public stateful function burn(tokenId : int) : bool = 
@@ -46,7 +45,6 @@ contract ERC721 =
     require(isApprovedForAll(Call.caller, to), "Caller isn't approved")
     
     put(state{tokenApprovals = state.tokenApprovals{[tokenId] = to}})
-
     true
 
   public stateful function transferFrom(from : address, to : address, tokenId : int) : bool =
