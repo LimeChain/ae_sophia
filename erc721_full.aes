@@ -32,7 +32,6 @@ contract ERC721 =
     onlyTokenOwner(Call.caller, tokenId)
 
     put(state{tokenURIs = state.tokenURIs{[tokenId] = uri}})
-
     true  
 
   public stateful function mint(tokenId : int, to : address) : bool = 
@@ -42,7 +41,6 @@ contract ERC721 =
 
     put(state{tokenOwner = state.tokenOwner{[tokenId] = to}})
     put(state{ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
-
     true
 
   public stateful function burn(tokenId : int) : bool = 
