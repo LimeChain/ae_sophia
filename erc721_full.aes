@@ -10,12 +10,12 @@ contract ERC721 =
 
   //todo repalce {} with Map.empty
   public stateful function  init(name : string, symbol : string) = {
-    name = name,
-    symbol = symbol,
+  	name = name,
+  	symbol = symbol,
     owner = Call.caller,
-    ownedTokensCount = {},
-    tokenOwner = {},
-    tokenApprovals = {},
+  	ownedTokensCount = {},
+  	tokenOwner = {},
+  	tokenApprovals = {},
     operatorApprovals = {}}
 
   public function name() : string = state.name
@@ -24,6 +24,21 @@ contract ERC721 =
   public function ownerOf(tokenId : int) = lookupById(tokenId, state.tokenOwner, #0)
   public function getApproved(tokenId : int) : address = lookupById(tokenId, state.tokenApprovals, #0)
   public function isApprovedForAll(owner : address, operator : address) : bool = state.operatorApprovals[owner][operator]
+
+  public stateful function mint(tokenId : int, to : address) : bool = 
+    onlyOwner(Call.caller)
+    if(checkTokenExists(tokenId) == true)
+      abort("Token can't be overrided")
+
+    put(state{tokenOwner = state.tokenOwner{[tokenId] = to}})
+    put(state{ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
+
+    true
+
+  public stateful function burn(tokenId : int) : bool = 
+    onlyTokenOwner(Call.caller, tokenId) 
+    removeTokenFrom(Call.caller, tokenId)
+    true
 
   public stateful function approve(tokenId : int, to : address) : bool =
     onlyTokenOwner(Call.caller, tokenId)
@@ -71,14 +86,14 @@ contract ERC721 =
     true
 
   private function lookupByAddress(k : address, m, v) =
-    switch(Map.lookup(k, m))
-      None    => v
-      Some(x) => x
+  	switch(Map.lookup(k, m))
+	    None    => v
+	    Some(x) => x
 
   private function lookupById(k : int, m, v) =
-    switch(Map.lookup(k, m))
-      None    => v
-      Some(x) => x
+  	switch(Map.lookup(k, m))
+	    None    => v
+	    Some(x) => x
 
   private function add(_a : int, _b : int) : int =
     let c : int = _a + _b
