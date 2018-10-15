@@ -13,12 +13,12 @@ contract ERC721 =
   public stateful function  init(name : string, symbol : string) = {
   	name = name,
   	symbol = symbol,
-    owner = Call.caller,
+        owner = Call.caller,
   	ownedTokensCount = {},
   	tokenOwner = {},
   	tokenApprovals = {},
-    operatorApprovals = {},
-    tokenURIs = {}}
+        operatorApprovals = {},
+        tokenURIs = {}}
 
   public function name() : string = state.name
   public function symbol() : string = state.symbol
