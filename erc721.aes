@@ -38,8 +38,7 @@ contract ERC721 =
 
   public stateful function burn(tokenId : int) : bool = 
     onlyTokenOwner(Call.caller, tokenId) 
-    put(state{tokenOwner = state.tokenOwner{[tokenId] = #0}})
-    put(state{ownedTokensCount[Call.caller] = sub(lookupByAddress(Call.caller, state.ownedTokensCount, 0), 1)})
+    removeTokenFrom(Call.caller, tokenId)
     true
 
   public stateful function approve(tokenId : int, to : address) : bool =
@@ -55,20 +54,35 @@ contract ERC721 =
     lookupById(tokenId, state.tokenApprovals, #0)
 
   public stateful function transferFrom(from : address, to : address, tokenId : int) : bool =
-    require((isApprovedOrOwner()), "asd")
+    require(isApprovedOrOwner(Call.caller, tokenId), "asd")
 
     clearApproval(from, tokenId)
     clearApproval(to, tokenId)
-
     true
+    removeTokenFrom(from, tokenId)
+    removeTokenFrom(to, tokenId)
+    addTokenTo(to, tokenId)
+    true
+
+  public function safeTransferFrom(from : address, to : address, tokenId : int, data : string) = 
+    transferFrom(from, to, tokenId)
+    require(checkAndCallSafeTransfer(from, to, tokenId, data))
+
+  private stateful function addTokenTo(to : address, tokenId : int) = 
+    put(state{tokenOwner = state.tokenOwner{[tokenId] = to}})
+    put(state{ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
+
+  private stateful function removeTokenFrom(from : address, tokenId : int) =
+    put(state{tokenOwner = state.tokenOwner{[tokenId] = #0}})
+    put(state{ownedTokensCount[from] = sub(lookupByAddress(from, state.ownedTokensCount, 0), 1)})
 
   // todo impl
   public function isApprovedForAll() : bool =
     true
 
   // // todo impl  
-  // public function setApprovalForAll() : bool =
-  //   true
+  public function setApprovalForAll() : bool =
+    true
 
 //Helper functions
   private function lookupByAddress(k : address, m, v) =
@@ -113,11 +127,11 @@ contract ERC721 =
     put(state{tokenApprovals = state.tokenApprovals{[tokenId] = #0}})
     true
 
-  // private function removeTokenFrom(from : address, tokenId : int) : bool = 
-  //   put(state{tokenOwner = state.tokenOwner{[tokenId] = to}})
-  //   put(state{ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
 
-   
+
+
+
+
 //Helper functions
 
 // to be implemented
