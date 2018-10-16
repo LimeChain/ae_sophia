@@ -15,6 +15,7 @@ const keypair = {
 describe('ERC721', () => {
 
 	let client;
+	let nonce;
 
 	const gasUsed = 100000;
 
@@ -25,14 +26,29 @@ describe('ERC721', () => {
 			keypair
 		});
 
+		const accInfo = await client.api.getAccountByPubkey(await client.address());
+		nonce = accInfo.nonce; // Until we fix the nonce issue, we should sometimes be upgrading the nonce ourselves
+	})
+
+	beforeEach(() => {
+		nonce++;
 	})
 
 
 	it('deploy contract', async () => {
 		const source = readFileRelative('erc721.aes', 'utf-8');
-		const contract = await client.contractCompile(source, { gas: gasUsed })
-		console.log(contract);
-		const deployDescriptor = await contract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce: 18 } })
-		console.log(deployDescriptor);
+		const compiledContract = await client.contractCompile(source, { gas: gasUsed })
+		console.log(compiledContract);
+		const deployedContract = await compiledContract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce } })
+		console.log(deployedContract);
+	})
+
+	it('call contract read', async () => {
+		const source = readFileRelative('erc721.aes', 'utf-8');
+		const compiledContract = await client.contractCompile(source, { gas: gasUsed })
+		const deployedContract = await compiledContract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce } })
+		nonce++;
+		const callResult = await deployedContract.call('name', { options: { ttl: 500, gas: gasUsed, nonce } });
+		console.log(callResult);
 	})
 })
