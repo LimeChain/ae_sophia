@@ -13,38 +13,47 @@ const keypair = {
 
 const tokenName = "Lime Token";
 const tokenSymbol = "NFT";
+const gasUsed = 100000;
 
+const firstTokenId = 1;
+const secondTokenId = 2;
+const thirdTokenId = 3;
+const nonExistentTokenId = 123;
+const pubKeyHex = "0xda91f82013b8f9bb9859fc9bb4d5c6e53154e380b2b776fe456f211abd99a927"
 
+async function  init(){
+	let nonce;
+	let client = await Ae({
+		url: 'https://sdk-edgenet.aepps.com',
+		internalUrl: 'https://sdk-edgenet.aepps.com',
+		keypair
+	});
 
-describe('ERC721', () => {
+	try{
+		const fileNonce = readFileRelative('nonce.txt', 'utf-8');
+		nonce = parseInt(fileNonce.toString().trim())
+
+		if(isNaN(nonce)){
+			throw new Error("NaN")
+		}
+	} catch(e){
+		const accInfo = await client.api.getAccountByPubkey(await client.address());
+		nonce = parseInt(accInfo.nonce); // Until we fix the nonce issue, we should sometimes be upgrading the nonce ourselves
+	}
+
+	return { nonce, client}
+}
+
+describe('Deploy', () => {
 
 	let client;
 	let nonce;
-
-	const gasUsed = 100000;
+    const source = readFileRelative('erc721.aes', 'utf-8');
 
 	before(async () => {
-		client = await Ae({
-			url: 'https://sdk-edgenet.aepps.com',
-			internalUrl: 'https://sdk-edgenet.aepps.com',
-			keypair
-		});
-
-		try{
-			console.log("1")
-			
-			const fileNonce = readFileRelative('nonce.txt', 'utf-8');
-			nonce = parseInt(fileNonce.toString().trim())
-
-			if(isNaN(nonce)){
-				throw  new Error("NaN")
-			}
-		} catch(e){
-			console.log("2")
-			
-			const accInfo = await client.api.getAccountByPubkey(await client.address());
-			nonce = parseInt(accInfo.nonce); // Until we fix the nonce issue, we should sometimes be upgrading the nonce ourselves
-		}
+		let inited = await init();
+		client = inited.client;
+		nonce = inited.nonce;
 	})
 
 	after(function() {
@@ -56,34 +65,68 @@ describe('ERC721', () => {
 		console.log("Nonce: " + nonce);
 	})
 
-	it('deploy contract', async () => {
+	it('contract successfully', async () => {
 		//Arrange
-		const source = readFileRelative('erc721.aes', 'utf-8');
 		const compiledContract = await client.contractCompile(source, { gas: gasUsed })
 
 		//Act
 		const deployedContract = await compiledContract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce } })
-		
-		//Assert
+        console.log(JSON.stringify(deployedContract.call))
+
+	    //Assert
 		assert.equal(keypair.pub, deployedContract.owner)
 	})
 
-	it('call contract read', async () => {
+	it('call contract read successfully', async () => {
 		//Arrange
-		const source = readFileRelative('erc721.aes', 'utf-8');
 		const compiledContract = await client.contractCompile(source, { gas: gasUsed })
-		const deployedContract = await compiledContract.deploy({ initState: `("Lime Token", "NFT")`, options: { ttl: 500, gas: gasUsed, nonce } })
+		const deployedContract = await compiledContract.deploy({ initState: '("Lime Token", "NFT")', options: { ttl: 500, gas: gasUsed, nonce } })
 		nonce++;
 		
 		//Act
 		const callNameResult = await deployedContract.call('name', { options: { ttl: 500, gas: gasUsed, nonce } });
 		const decodedNameResult = await callNameResult.decode("string");
-		nonce++
+	    nonce++;
 		const callSymbolResult = await deployedContract.call('symbol', { options: { ttl: 500, gas: gasUsed, nonce } });
-		const decodedSymbolResult = await callSymbolResult.decode("string");
+        const decodedSymbolResult = await callSymbolResult.decode("string");
 		
         //Assert
 		assert.equal(decodedNameResult.value, tokenName)
 		assert.equal(decodedSymbolResult.value, tokenSymbol)
 	})
+})
+
+describe('Mint', () => {
+
+    let client;
+    let nonce;
+    const source = readFileRelative('erc721.aes', 'utf-8');
+
+    before(async () => {
+        let inited = await init();
+        client = inited.client;
+        nonce = inited.nonce;
+    })
+
+    after(function () {
+        writeFileRelative('nonce.txt', nonce, function () { })
+    });
+
+    beforeEach(() => {
+        nonce++;
+        console.log("Nonce: " + nonce);
+    })
+
+    it('should mint 1 token successfully', async () => {
+        //Arrange
+        const compiledContract = await client.contractCompile(source, { gas: gasUsed })
+        const deployedContract = await compiledContract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce } })
+        nonce++;
+        console.log(deployedContract.call)
+        //Act
+//        const mintedResult = await deployedContract.call('mint', { args: '("0", "0xda91f82013b8f9bb9859fc9bb4d5c6e53154e380b2b776fe456f211abd99a927")', options: { ttl: 500, gas: gasUsed, nonce } });
+//        console.log(mintedResult)
+        //Assert
+//        assert.equal(keypair.pub, deployedContract.owner)
+    })
 })
