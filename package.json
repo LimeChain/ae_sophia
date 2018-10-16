@@ -1,0 +1,30 @@
+{
+  "name": "erc721-sophia",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha 'test/**/*.js'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vsavovlime/ae_sophia.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vsavovlime/ae_sophia/issues"
+  },
+  "homepage": "https://github.com/vsavovlime/ae_sophia#readme",
+  "dependencies": {
+    "@aeternity/aepp-sdk": "git+https://github.com/aeternity/aepp-sdk-js.git#develop",
+    "chai": "^4.2.0",
+    "mocha": "^5.2.0"
+  },
+  "babel": {
+    "presets": [
+      "stage-3",
+      "latest"
+    ]
+  }
+}

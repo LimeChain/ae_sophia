@@ -1,0 +1,10 @@
+.DS_Store
+dist
+node_modules
+.nyc_output
+.etherlime-store
+.testcases
+build
+docs/build
+.idea/
+.outputParameter
