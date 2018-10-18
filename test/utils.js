@@ -19,7 +19,7 @@ const readFile = (path, encoding = null, errTitle = 'READ FILE ERR') => {
 	}
 }
 
-const writeFile = (path, content, callBack) => {
+const writeFile = (path, content) => {
 	// try {
 	// 	return fs.writeFile(
 	// 		path,
@@ -37,25 +37,24 @@ const writeFile = (path, content, callBack) => {
 	// 	}
 	// }
 	// console.log("from fs: " + content)
-	fs.writeFile(path, content, function(err) {
-		if(err) {
-			return console.log(err);
-		}
-	
-		// console.log("The file was saved!");
-	}); 
+	fs.writeFileSync(path, content);
 }
 
-const writeFileRelative = async (relativePath, content = null, callBack = function(){}) => {
-	return writeFile(path.resolve(process.cwd(), relativePath), content, callBack);
+const writeFileRelative = async (relativePath, content = null) => {
+	return writeFile(path.resolve(process.cwd(), relativePath), content);
 }
 
 const readFileRelative = (relativePath, encoding = null, errTitle = 'READ FILE ERR') => {
 	return readFile(path.resolve(process.cwd(), relativePath), encoding, errTitle);
 }
 
+const fileExists = (relativePath) => {
+	return fs.existsSync(path.resolve(process.cwd(), relativePath));
+}
+
 module.exports = {
 	readFile,
 	readFileRelative,
-	writeFileRelative
+	writeFileRelative,
+	fileExists
 }
