@@ -15,11 +15,11 @@ const config = {
 		priv: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
 		pub: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
 	},
-	notOwnerKeyPair : {
+	notOwnerKeyPair: {
 		priv: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
 		pub: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
 	},
-	notOwnerPubKeyHex : "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
+	notOwnerPubKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
 	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
 	filesEncoding: 'utf-8',
 	nonceFile: 'nonce.txt',
@@ -40,7 +40,7 @@ describe('ERC721', () => {
 
 	let firstClient;
 	let secondClient;
-	let nonce;
+	let nonces;
 	let erc721Source;
 
 	before(async () => {
@@ -53,19 +53,23 @@ describe('ERC721', () => {
 		secondClient = await Ae({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: secondConfig.ownerKeyPair
+			keypair: config.notOwnerKeyPair
 		});
 
 		if (utils.fileExists(config.nonceFile)) {
-			const fileNonce = readFileRelative(config.nonceFile, config.filesEncoding);
-			nonce = parseInt(fileNonce.toString().trim())
+			const fileNonces = readFileRelative(config.nonceFile, config.filesEncoding);
+			nonce = JSON.parse(fileNonces.toString())
 		} else {
 			const accInfo = await firstClient.api.getAccountByPubkey(await firstClient.address());
-			nonce = parseInt(accInfo.nonce);
-		}
+			const acc2Info = await secondClient.api.getAccountByPubkey(await firstClient.address());
 
-		if (isNaN(nonce)) {
-			throw new Error("NaN")
+			nonce = parseInt(accInfo.nonce);
+			nonce2 = parseInt(acc2Info.nonce);
+
+			nonces = {
+				first: nonce,
+				second: nonce2
+			}
 		}
 
 		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
@@ -76,11 +80,10 @@ describe('ERC721', () => {
 
 		it('deploying successfully', async () => {
 			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
-			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
 			assert.isFulfilled(deployPromise, 'Could not deploy the erc721');
-			nonce++;
+			nonces.first++;
 			const deployedContract = await deployPromise;
-
 
 			assert.equal(config.ownerKeyPair.pub, deployedContract.owner)
 		})
@@ -93,25 +96,25 @@ describe('ERC721', () => {
 		beforeEach(async () => {
 			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
 
-			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
 
-			nonce++;
+			nonces.first++;
 		})
 
 		describe('Read', () => {
 			it('call contract read successfully', async () => {
 
-				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce } });
+				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
 				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
-				nonce++;
+				nonces.first++;
 				const callNameResult = await callNamePromise;
 				const decodedNameResult = await callNameResult.decode("string");
 				assert.equal(decodedNameResult.value, tokenName)
 
 
-				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce } });
+				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
 				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
-				nonce++;
+				nonces.first++;
 				const callSymbolResult = await callSymbolPromise;
 
 				const decodedSymbolResult = await callSymbolResult.decode("string");
@@ -124,20 +127,20 @@ describe('ERC721', () => {
 			it('should mint 1 token successfully', async () => {
 				const expectedBalance = 1;
 
-				assert.isFulfilled(deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } }));
-				nonce++
+				assert.isFulfilled(deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } }));
+				nonces.first++
 
-				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
 				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
-				nonce++
-				
+				nonces.first++
+
 				const ownerOfResult = await ownerOfPromise;
 
 				const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
 				assert.equal(decodedOwnerOfResult, config.pubKeyHex)
 
-				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
-				nonce++;
+				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
+				nonces.first++;
 				const balanceOfResult = await balanceOfPromise;
 				const decodedBalanceOfResult = await balanceOfResult.decode("int");
 
@@ -148,6 +151,6 @@ describe('ERC721', () => {
 
 
 	after(function () {
-		writeFileRelative('nonce.txt', nonce)
+		writeFileRelative('nonce.txt', JSON.stringify(nonces))
 	});
 })
