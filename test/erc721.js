@@ -81,6 +81,7 @@ describe('ERC721', () => {
 			nonce++;
 			const deployedContract = await deployPromise;
 
+
 			assert.equal(config.ownerKeyPair.pub, deployedContract.owner)
 		})
 
@@ -91,6 +92,7 @@ describe('ERC721', () => {
 
 		beforeEach(async () => {
 			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
+
 			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
 
 			nonce++;
@@ -140,7 +142,6 @@ describe('ERC721', () => {
 				const decodedBalanceOfResult = await balanceOfResult.decode("int");
 
 				assert.equal(decodedBalanceOfResult.value, expectedBalance)
-
 			})
 		})
 	})
