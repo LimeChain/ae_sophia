@@ -60,10 +60,8 @@ describe('ERC721', () => {
 			const fileNonces = readFileRelative(config.nonceFile, config.filesEncoding);
 			nonces = JSON.parse(fileNonces.toString())
 		} else {
-			const accInfo = await firstClient.api.getAccountByPubkey(await firstClient.address());
-			nonce = parseInt(accInfo.nonce);
 			nonces = {
-				first: nonce,
+				first: 1,
 				second: 1
 			}
 
@@ -79,9 +77,9 @@ describe('ERC721', () => {
 			const signed = await firstClient.signTransaction(tx)
 			await firstClient.api.postTransaction({ tx: signed })
 
-			const acc2Info = await secondClient.api.getAccountByPubkey(await secondClient.address());
-			nonces.second = parseInt(acc2Info.nonce);
 		}
+
+		console.log("Test suit starting with nonces", nonces.first, nonces.second);
 
 		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
 	})
@@ -162,38 +160,9 @@ describe('ERC721', () => {
 				assert.equal(decodedBalanceOfResult.value, expectedBalance)
 			})
 
-			it.only('should mint 1 token successfully 123', async () => {
-				//Arrange
-
-				// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } })
-				// nonces.first++;
-				// assert.isFulfilled(deployContractPromise);
-
-				//Act
-				// const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-				// async function spendTx ({ senderId, recipientId, amount, fee, ttl, nonce, payload }) {
-				// var  a = await firstClient.spendTx({senderId : config.ownerKeyPair.pub, recipientId : config.notOwnerKeyPair.pub, amount : 10000000, nonce, fee: 1, payload: ''})
-				// const { tx } = await firstClient.api.postSpend({
-				// 	fee: 1,
-				// 	amount: 1111111,
-				// 	senderId: config.ownerKeyPair.pub,
-				// 	recipientId: config.notOwnerKeyPair.pub,
-				// 	payload: '',
-				// 	ttl: 555,
-				// 	nonce: nonces.first++
-				// })
-				// const signed = await firstClient.signTransaction(tx)
-				// const { txHash } = await firstClient.api.postTransaction({ tx: signed })
-				// console.log(txHash)
-				let result = await secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-				console.log(result)
-				// const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
-				// nonces.first++;
-				// assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
-
-
-				// //Assert
-				// assert.equal(decodedBalanceOfResult.value, expectedBalance)
+			it('should not mint from non-owner', async () => {
+				const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+				assert.isRejected(unauthorisedPromise, 'Non-owner was able to mint');
 			})
 		})
 	})
