@@ -53,7 +53,7 @@ describe('ERC721', () => {
 		secondClient = await Ae({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: secondConfig.ownerKeyPair
+			keypair: config.notOwnerKeyPair
 		});
 
 		if (utils.fileExists(config.nonceFile)) {
@@ -69,19 +69,21 @@ describe('ERC721', () => {
 		}
 
 		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
-
 	})
 
 	describe('Deploy contract', () => {
 
 		it('deploying successfully', async () => {
+			//Arrange
 			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
+
+			//Act
 			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
-			assert.isFulfilled(deployPromise, 'Could not deploy the erc721');
 			nonce++;
+			assert.isFulfilled(deployPromise, 'Could not deploy the erc721');
+			
+			//Assert
 			const deployedContract = await deployPromise;
-
-
 			assert.equal(config.ownerKeyPair.pub, deployedContract.owner)
 		})
 
@@ -89,9 +91,10 @@ describe('ERC721', () => {
 
 	describe('Interact with contract', () => {
 		let deployedContract;
+		let compiledContract;
 
 		beforeEach(async () => {
-			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
+			compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
 
 			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
 
@@ -100,48 +103,93 @@ describe('ERC721', () => {
 
 		describe('Read', () => {
 			it('call contract read successfully', async () => {
+				//Arrange
 
+				//Act
 				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce } });
-				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
 				nonce++;
+				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
+				
+				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce } });
+				nonce++;
+				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
+
+				//Assert
 				const callNameResult = await callNamePromise;
 				const decodedNameResult = await callNameResult.decode("string");
-				assert.equal(decodedNameResult.value, tokenName)
 
-
-				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce } });
-				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
-				nonce++;
 				const callSymbolResult = await callSymbolPromise;
-
 				const decodedSymbolResult = await callSymbolResult.decode("string");
 
+				assert.equal(decodedNameResult.value, tokenName)
 				assert.equal(decodedSymbolResult.value, tokenSymbol)
 			})
 		})
 
 		describe('Mint', () => {
 			it('should mint 1 token successfully', async () => {
+				//Arrange
 				const expectedBalance = 1;
 
-				assert.isFulfilled(deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } }));
+				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } })
 				nonce++
+				assert.isFulfilled(deployContractPromise);
 
+				//Act
 				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
-				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
 				nonce++
+				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
 				
-				const ownerOfResult = await ownerOfPromise;
-
-				const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
-				assert.equal(decodedOwnerOfResult, config.pubKeyHex)
-
 				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
 				nonce++;
+				assert.isFulfilled(balanceOfPromise, 'Could not call ownerOf');
+
+				//Assert
+				const ownerOfResult = await ownerOfPromise;
+				const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
+
 				const balanceOfResult = await balanceOfPromise;
 				const decodedBalanceOfResult = await balanceOfResult.decode("int");
 
+				assert.equal(decodedOwnerOfResult, config.pubKeyHex)
 				assert.equal(decodedBalanceOfResult.value, expectedBalance)
+			})
+
+			it.only('should mint 1 token successfully 123', async () => {
+				//Arrange
+
+				// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } })
+				// nonce++
+				// assert.isFulfilled(deployContractPromise);
+
+				//Act
+				// const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+				// async function spendTx ({ senderId, recipientId, amount, fee, ttl, nonce, payload }) {
+				// var  a = await firstClient.spendTx({senderId : config.ownerKeyPair.pub, recipientId : config.notOwnerKeyPair.pub, amount : 10000000, nonce, fee: 1, payload: ''})
+				const { tx } = await firstClient.api.postSpend({
+					fee: 1,
+					amount: 1111111,
+					senderId: config.ownerKeyPair.pub,
+					recipientId: config.notOwnerKeyPair.pub,
+					payload: '',
+					ttl: 555
+				  })
+				  const signed = await firstClient.signTransaction(tx)
+				  const { txHash } = await firstClient.api.postTransaction({ tx: signed })
+				  nonce++;
+				console.log(txHash)
+				let result = await
+					secondClient
+					.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce : 1 } })
+				nonce++;
+				console.log(result)
+				// const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+				// nonce++
+				// assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
+			
+
+				// //Assert
+				// assert.equal(decodedBalanceOfResult.value, expectedBalance)
 			})
 		})
 	})
