@@ -58,18 +58,29 @@ describe('ERC721', () => {
 
 		if (utils.fileExists(config.nonceFile)) {
 			const fileNonces = readFileRelative(config.nonceFile, config.filesEncoding);
-			nonce = JSON.parse(fileNonces.toString())
+			nonces = JSON.parse(fileNonces.toString())
 		} else {
 			const accInfo = await firstClient.api.getAccountByPubkey(await firstClient.address());
-			const acc2Info = await secondClient.api.getAccountByPubkey(await firstClient.address());
-
 			nonce = parseInt(accInfo.nonce);
-			nonce2 = parseInt(acc2Info.nonce);
-
 			nonces = {
 				first: nonce,
-				second: nonce2
+				second: 1
 			}
+
+			const { tx } = await firstClient.api.postSpend({
+				fee: 1,
+				amount: 1111111,
+				senderId: config.ownerKeyPair.pub,
+				recipientId: config.notOwnerKeyPair.pub,
+				payload: '',
+				ttl: 555,
+				nonce: nonces.first++
+			})
+			const signed = await firstClient.signTransaction(tx)
+			await firstClient.api.postTransaction({ tx: signed })
+
+			const acc2Info = await secondClient.api.getAccountByPubkey(await secondClient.address());
+			nonces.second = parseInt(acc2Info.nonce);
 		}
 
 		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
@@ -82,8 +93,7 @@ describe('ERC721', () => {
 			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
 
 			//Act
-			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-			nonces.first++;
+			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 			assert.isFulfilled(deployPromise, 'Could not deploy the erc721');
 
 			//Assert
@@ -100,9 +110,7 @@ describe('ERC721', () => {
 		beforeEach(async () => {
 			compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
 
-			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-
-			nonces.first++;
+			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 		})
 
 		describe('Read', () => {
@@ -110,12 +118,10 @@ describe('ERC721', () => {
 				//Arrange
 
 				//Act
-				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-				nonces.first++;
+				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
 
-				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-				nonces.first++;
+				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
 
 				//Assert
@@ -135,17 +141,14 @@ describe('ERC721', () => {
 				//Arrange
 				const expectedBalance = 1;
 
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } })
-				nonces.first++;
+				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
 				assert.isFulfilled(deployContractPromise);
 
 				//Act
-				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-				nonces.first++;
+				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
 
-				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
-				nonces.first++;
+				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(balanceOfPromise, 'Could not call ownerOf');
 
 				//Assert
@@ -170,22 +173,19 @@ describe('ERC721', () => {
 				// const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first } });
 				// async function spendTx ({ senderId, recipientId, amount, fee, ttl, nonce, payload }) {
 				// var  a = await firstClient.spendTx({senderId : config.ownerKeyPair.pub, recipientId : config.notOwnerKeyPair.pub, amount : 10000000, nonce, fee: 1, payload: ''})
-				const { tx } = await firstClient.api.postSpend({
-					fee: 1,
-					amount: 1111111,
-					senderId: config.ownerKeyPair.pub,
-					recipientId: config.notOwnerKeyPair.pub,
-					payload: '',
-					ttl: 555
-				})
-				const signed = await firstClient.signTransaction(tx)
-				const { txHash } = await firstClient.api.postTransaction({ tx: signed })
-				nonces.first++;
-				console.log(txHash)
-				let result = await
-					secondClient
-						.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: 1 } })
-				nonces.first++;
+				// const { tx } = await firstClient.api.postSpend({
+				// 	fee: 1,
+				// 	amount: 1111111,
+				// 	senderId: config.ownerKeyPair.pub,
+				// 	recipientId: config.notOwnerKeyPair.pub,
+				// 	payload: '',
+				// 	ttl: 555,
+				// 	nonce: nonces.first++
+				// })
+				// const signed = await firstClient.signTransaction(tx)
+				// const { txHash } = await firstClient.api.postTransaction({ tx: signed })
+				// console.log(txHash)
+				let result = await secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
 				console.log(result)
 				// const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
 				// nonces.first++;
