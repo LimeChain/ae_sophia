@@ -1,14 +1,28 @@
 const chai = require('chai');
+let chaiAsPromised = require("chai-as-promised");
+chai.use(chaiAsPromised);
 const assert = chai.assert;
+const utils = require('./utils');
 const readFileRelative = require('./utils').readFileRelative;
 const writeFileRelative = require('./utils').writeFileRelative;
 const AeSDK = require('@aeternity/aepp-sdk');
 const Ae = AeSDK.Cli;
 
-const keypair = {
-	priv: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-	pub: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
-} // Not sensitive data at all
+const config = {
+	host: "http://localhost:3001/",
+	internalHost: "http://localhost:3001/internal/",
+	ownerKeyPair: {
+		priv: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+		pub: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
+	},
+	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+	filesEncoding: 'utf-8',
+	nonceFile: 'nonce.txt',
+	sourceFile: 'erc721_full.aes',
+	gas: 100000,
+	ttl: 500
+}
+
 const tokenName = "Lime Token";
 const tokenSymbol = "NFT";
 const gasUsed = 100000;
@@ -16,116 +30,112 @@ const firstTokenId = 0;
 const secondTokenId = 1;
 const thirdTokenId = 2;
 const nonExistentTokenId = 123;
-const pubKeyHex = "0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca"
-const host = "http://localhost:3001/";
-const internalHost = "http://localhost:3001/internal/";
-const source = readFileRelative('erc721_full.aes', 'utf-8');
 
 describe('ERC721', () => {
 
 	let client;
 	let nonce;
+	let erc721Source;
 
 	before(async () => {
-		nonce;
 		client = await Ae({
-			url: host,
-			internalUrl: internalHost,
-			keypair
+			url: config.host,
+			internalUrl: config.internalHost,
+			keypair: config.ownerKeyPair
 		});
-	
-		try{
-			const fileNonce = readFileRelative('nonce.txt', 'utf-8');
-			console.log("File nonce: " + fileNonce)
+
+		if (utils.fileExists(config.nonceFile)) {
+			const fileNonce = readFileRelative(config.nonceFile, config.filesEncoding);
 			nonce = parseInt(fileNonce.toString().trim())
-			if(isNaN(nonce)){
-				throw new Error("NaN")
-			}
-		} catch(e){
+		} else {
 			const accInfo = await client.api.getAccountByPubkey(await client.address());
-			nonce = parseInt(accInfo.nonce); // Until we fix the nonce issue, we should sometimes be upgrading the nonce ourselves
-			console.log("Node nonce: " + fileNonce) + 1
+			nonce = parseInt(accInfo.nonce);
 		}
+
+		if (isNaN(nonce)) {
+			throw new Error("NaN")
+		}
+
+		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
+
 	})
 
-	describe('Deploy', () => {
-		it('contract successfully', async () => {
-			let deployedContract;
-			try{
-				const compiledContract = await client.contractCompile(source, { gas: gasUsed })
-				deployedContract = await compiledContract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce }})
-				nonce++
-			}catch(e){
-				console.log(e)
-				assert.isFalse(true);
-				return;
-			}
-	
-			assert.equal(keypair.pub, deployedContract.owner)
+	describe('Deploy contract', () => {
+
+		it('deploying successfully', async () => {
+			const compiledContract = await client.contractCompile(erc721Source, { gas: config.gas })
+			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+			assert.isFulfilled(deployPromise, 'Could not deploy the erc721');
+			const deployedContract = await deployPromise;
+			nonce++;
+
+			assert.equal(config.ownerKeyPair.pub, deployedContract.owner)
 		})
-	
-		it('call contract read successfully', async () => {
-			const compiledContract = await client.contractCompile(source, { gas: gasUsed })
-			let decodedNameResult;
-			let decodedSymbolResult;
-	
-			try{
-				let deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: 500, gas: gasUsed, nonce } })
-				nonce++;
-			
-				let callNameResult = await deployedContract.call('name', { options: { ttl: 500, gas: gasUsed, nonce } });
-				decodedNameResult = await callNameResult.decode("string");
-				nonce++;
-		
-				let callSymbolResult = await deployedContract.call('symbol', { options: { ttl: 500, gas: gasUsed, nonce } });
-				decodedSymbolResult = await callSymbolResult.decode("string");
-				nonce++;
-			}catch(e){
-				assert.isFalse(true);
-				return;
-			}
-	
-			assert.equal(decodedNameResult.value, tokenName)
-			assert.equal(decodedSymbolResult.value, tokenSymbol)
-		})
+
 	})
 
-	describe('Mint', () => {
-		it('should mint 1 token successfully', async () => {
-			const compiledContract = await client.contractCompile(source, { gas: gasUsed })
-			let deployedContract;
-			let decodedOwnerOfResult;
-			let decodedBalanceOfResult;
-			let expectedBalance = 1;
-	
-			try{
-				deployedContract = await compiledContract.deploy({ initState: undefined, options: { ttl: 500, gas: gasUsed, nonce } })
-				nonce++;
-			
-				let mintedResult = await deployedContract.call('mint', { args: `(${firstTokenId}, ${pubKeyHex})`, options: { ttl: 500, gas: gasUsed, nonce} });
-				nonce++
-				
-				let ownerOfResult = await deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: 500, gas: gasUsed, nonce} });
-				nonce++
-				decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
-	
-				let balanceOfResult = await deployedContract.call('balanceOf', { args: `(${pubKeyHex})`, options: { ttl: 500, gas: gasUsed, nonce} });
-				nonce++
-				decodedBalanceOfResult = await balanceOfResult.decode("int");
-				
-			}catch(e){
-				console.log(e)
-				assert.isFalse(true);
-				return;
-			}
-	
-			assert.equal(decodedOwnerOfResult, pubKeyHex)
-			assert.equal(decodedBalanceOfResult.value, expectedBalance)
+	describe('Interact with contract', () => {
+		let deployedContract;
+
+		beforeEach(async () => {
+			const compiledContract = await client.contractCompile(erc721Source, { gas: config.gas })
+			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+
+			nonce++;
 		})
+
+		describe('Read', () => {
+			it('call contract read successfully', async () => {
+
+				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce } });
+				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
+				const callNameResult = await callNamePromise;
+				const decodedNameResult = await callNameResult.decode("string");
+				assert.equal(decodedNameResult.value, tokenName)
+
+				nonce++;
+
+				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce } });
+				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
+				const callSymbolResult = await callSymbolPromise;
+
+				nonce++;
+				const decodedSymbolResult = await callSymbolResult.decode("string");
+
+				assert.equal(decodedSymbolResult.value, tokenSymbol)
+			})
+		})
+
+		describe('Mint', () => {
+			it('should mint 1 token successfully', async () => {
+				const expectedBalance = 1;
+
+				assert.isFulfilled(deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } }));
+				nonce++
+
+				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
+				const ownerOfResult = await ownerOfPromise;
+				nonce++
+
+				const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
+				assert.equal(decodedOwnerOfResult, config.pubKeyHex)
+
+				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce } });
+				const balanceOfResult = await balanceOfPromise;
+				nonce++;
+				const decodedBalanceOfResult = await balanceOfResult.decode("int");
+
+				assert.equal(decodedBalanceOfResult.value, expectedBalance)
+
+			})
+		})
+
 	})
 
-	after(function() {
-		writeFileRelative('nonce.txt', nonce, function(){})
+
+	after(function () {
+		writeFileRelative('nonce.txt', nonce)
 	});
 })
 

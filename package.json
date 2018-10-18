@@ -19,6 +19,7 @@
   "dependencies": {
     "@aeternity/aepp-sdk": "https://github.com/aeternity/aepp-sdk-js.git#67163cfe9694e90b53b243eb90c6f71b76fea807",
     "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "mocha": "^5.2.0"
   },
   "babel": {
