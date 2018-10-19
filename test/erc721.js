@@ -169,9 +169,6 @@ describe('ERC721', () => {
 	
 				it('should not mint token with id that already exist', async () => {
 					//Arrange
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, 'Could not call balanceOf');
-					// await deployContractPromise;
 	
 					//Act
 					const secondDeployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
@@ -185,10 +182,6 @@ describe('ERC721', () => {
 				it('should burn token successfully', async () => {
 					//Arrange
 					const expectedBalance = 0;
-					
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
 	
 					//Act
 					const ownerOfPromise = deployedContract.call('burn', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
@@ -206,9 +199,6 @@ describe('ERC721', () => {
 	
 				it('shouldn`t burn token from non-owner', async () => {
 					//Arrange
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
 	
 					//Act
 					const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "burn", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
@@ -224,10 +214,6 @@ describe('ERC721', () => {
 					const expectedBalanceOfNotOwner = 1;
 					const expectedBalanceOfOwner = 0;
 					
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
-	
 					//Act
 					const setApprovalForAllPromise = deployedContract.call('setApprovalForAll', { args: `(${config.pubKeyHex},${true})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 					assert.isFulfilled(setApprovalForAllPromise, 'Could not call setApprovalForAll');
@@ -265,9 +251,6 @@ describe('ERC721', () => {
 	
 				it('non-owner of token shouldn`t be able to call approve', async () => {
 					//Arrange
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
 	
 					//Act
 					const unauthorizedApprovePromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
@@ -278,9 +261,6 @@ describe('ERC721', () => {
 	
 				it('non-owner of token shouldn`t be able to call transferFrom', async () => {
 					//Arrange
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
 	
 					//Act
 					const unauthorizedTransferPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
