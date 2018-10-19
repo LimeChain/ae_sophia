@@ -23,7 +23,7 @@ const config = {
 	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
 	filesEncoding: 'utf-8',
 	nonceFile: 'nonce.txt',
-	sourceFile: 'erc721_full.aes',
+	sourceFile: './contracts/erc721_full.aes',
 	gas: 100000,
 	ttl: 500
 }
