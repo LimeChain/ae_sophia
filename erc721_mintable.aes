@@ -35,11 +35,13 @@ contract ERC721 =
     true
 
   public stateful function approve(tokenId : int, to : address) : bool =
-    onlyTokenOwner(Call.caller, tokenId)
+    let owner : address = ownerOf(tokenId)
+    
     require(to != Call.caller, "Receiver can't be same as sender")
-    require(isApprovedForAll(Call.caller, to), "Caller isn't approved")
+    require(Call.caller == owner || isApprovedForAll(owner, Call.caller), "Not owner or not approved")
     
     put(state{tokenApprovals = state.tokenApprovals{[tokenId] = to}})
+
     true
 
   public stateful function transferFrom(from : address, to : address, tokenId : int) : bool =

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --timeout 35000 'test/**/*.js' --exit"
+    "test": "mocha --timeout 45000 'test/**/*.js' --exit"
   },
   "repository": {
     "type": "git",

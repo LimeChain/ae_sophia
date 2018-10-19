@@ -30,10 +30,11 @@ contract ERC721 =
     removeTokenFrom(Call.caller, tokenId)
     true
 
-  public stateful function approve(tokenId : int, to : address) : bool =
-    onlyTokenOwner(Call.caller, tokenId)
+   public stateful function approve(tokenId : int, to : address) : bool =
+    let owner : address = ownerOf(tokenId)
+    
     require(to != Call.caller, "Receiver can't be same as sender")
-    require(isApprovedForAll(Call.caller, to), "Caller isn't approved")
+    require(Call.caller == owner || isApprovedForAll(owner, Call.caller), "Not owner or not approved")
     
     put(state{tokenApprovals = state.tokenApprovals{[tokenId] = to}})
 
