@@ -118,15 +118,14 @@ describe('ERC721', () => {
 				//Act
 				const callNamePromise = deployedContract.call('name', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
+				const callNameResult = await callNamePromise;
 
 				const callSymbolPromise = deployedContract.call('symbol', { options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
+				const callSymbolResult = await callSymbolPromise;
 
 				//Assert
-				const callNameResult = await callNamePromise;
 				const decodedNameResult = await callNameResult.decode("string");
-
-				const callSymbolResult = await callSymbolPromise;
 				const decodedSymbolResult = await callSymbolResult.decode("string");
 
 				assert.equal(decodedNameResult.value, tokenName)
@@ -140,20 +139,20 @@ describe('ERC721', () => {
 				const expectedBalance = 1;
 
 				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise);
+				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+				await deployContractPromise;
 
 				//Act
 				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
 				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
+				const ownerOfResult = await ownerOfPromise;
 
 				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(balanceOfPromise, 'Could not call ownerOf');
+				assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
+				const balanceOfResult = await balanceOfPromise;
 
 				//Assert
-				const ownerOfResult = await ownerOfPromise;
 				const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
-
-				const balanceOfResult = await balanceOfPromise;
 				const decodedBalanceOfResult = await balanceOfResult.decode("int");
 
 				assert.equal(decodedOwnerOfResult, config.pubKeyHex)
