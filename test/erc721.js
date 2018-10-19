@@ -133,157 +133,161 @@ describe('ERC721', () => {
 			})
 		})
 
-		describe('Mint', () => {
-			it('should mint 1 token successfully', async () => {
-				//Arrange
-				const expectedBalance = 1;
-
+		describe('Contract functionality', () => {
+			beforeEach(async () => {
 				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
 				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
 				await deployContractPromise;
-
-				//Act
-				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
-				const ownerOfResult = await ownerOfPromise;
-
-				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
-				const balanceOfResult = await balanceOfPromise;
-
-				//Assert
-				const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
-				const decodedBalanceOfResult = await balanceOfResult.decode("int");
-
-				assert.equal(decodedOwnerOfResult, config.pubKeyHex)
-				assert.equal(decodedBalanceOfResult.value, expectedBalance)
 			})
 
-			it('should not mint from non-owner', async () => {
-				const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-				assert.isRejected(unauthorisedPromise, 'Invocation failed');
+			describe('Mint', () => {
+				it('should mint 1 token successfully', async () => {
+					//Arrange
+					const expectedBalance = 1;
+	
+					//Act
+					const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
+					const ownerOfResult = await ownerOfPromise;
+	
+					const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
+					const balanceOfResult = await balanceOfPromise;
+	
+					//Assert
+					const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
+					const decodedBalanceOfResult = await balanceOfResult.decode("int");
+	
+					assert.equal(decodedOwnerOfResult, config.pubKeyHex)
+					assert.equal(decodedBalanceOfResult.value, expectedBalance)
+				})
+	
+				it('should not mint from non-owner', async () => {
+					const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+					assert.isRejected(unauthorisedPromise, 'Invocation failed');
+				})
+	
+				it('should not mint token with id that already exist', async () => {
+					//Arrange
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, 'Could not call balanceOf');
+					// await deployContractPromise;
+	
+					//Act
+					const secondDeployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					
+					//Assert
+					assert.isRejected(secondDeployContractPromise, 'Invocation');
+				})
 			})
-
-			it('should not mint token with id that already exist', async () => {
-				//Arrange
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise, 'Could not call balanceOf');
-				await deployContractPromise;
-
-				//Act
-				const secondDeployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				
-				//Assert
-				assert.isRejected(secondDeployContractPromise, 'Invocation');
+	
+			describe('Burn', () => {
+				it('should burn token successfully', async () => {
+					//Arrange
+					const expectedBalance = 0;
+					
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					//Act
+					const ownerOfPromise = deployedContract.call('burn', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
+					const ownerOfResult = await ownerOfPromise;
+	
+					const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
+					const balanceOfResult = await balanceOfPromise;
+	
+					//Assert
+					const decodedBalanceOfResult = await balanceOfResult.decode("int");
+					assert.equal(decodedBalanceOfResult.value, expectedBalance)
+				})
+	
+				it('shouldn`t burn token from non-owner', async () => {
+					//Arrange
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					//Act
+					const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "burn", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+	
+					//Assert
+					assert.isRejected(unauthorizedBurnPromise, 'Invocation failed');
+				})
 			})
-		})
-
-		describe('Burn', () => {
-			it('should burn token successfully', async () => {
-				//Arrange
-				const expectedBalance = 0;
-				
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-				await deployContractPromise;
-
-				//Act
-				const ownerOfPromise = deployedContract.call('burn', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
-				const ownerOfResult = await ownerOfPromise;
-
-				const balanceOfPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
-				const balanceOfResult = await balanceOfPromise;
-
-				//Assert
-				const decodedBalanceOfResult = await balanceOfResult.decode("int");
-				assert.equal(decodedBalanceOfResult.value, expectedBalance)
-			})
-
-			it('shouldn`t burn token from non-owner', async () => {
-				//Arrange
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-				await deployContractPromise;
-
-				//Act
-				const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "burn", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-
-				//Assert
-				assert.isRejected(unauthorizedBurnPromise, 'Invocation failed');
-			})
-		})
-
-		describe('Transfer', () => {
-			it('should transfer token successfully', async () => {
-				//Arrange
-				const expectedBalanceOfNotOwner = 1;
-				const expectedBalanceOfOwner = 0;
-				
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-				await deployContractPromise;
-
-				//Act
-				const setApprovalForAllPromise = deployedContract.call('setApprovalForAll', { args: `(${config.pubKeyHex},${true})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(setApprovalForAllPromise, 'Could not call setApprovalForAll');
-				const setApprovalForAllResult = await setApprovalForAllPromise;
-
-				const approvePromise = deployedContract.call('approve', { args: `(${firstTokenId}, ${config.notOwnerPubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(approvePromise, 'Could not call approve');
-				const approveResult = await approvePromise;
-
-				const transferFromPromise = deployedContract.call('transferFrom', { args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(transferFromPromise, 'Could not call transferFrom');
-				const transferFromResult = await transferFromPromise;
-
-				const balanceOfNotOwnerPromise = deployedContract.call('balanceOf', { args: `(${config.notOwnerPubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(balanceOfNotOwnerPromise, 'Could not call balanceOf');
-				const balanceOfNotOwnerResult = await balanceOfNotOwnerPromise;
-
-				const balanceOwnerPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(balanceOwnerPromise, 'Could not call balanceOf');
-				const balanceOfOwnerResult = await balanceOwnerPromise;
-
-				const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-				assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
-				const ownerOfResult = await ownerOfPromise;
-
-				//Assert
-				const decodedBalanceOfNotOwnerResult = await balanceOfNotOwnerResult.decode("int");
-				const decodedBalanceOfOwnerResult = await balanceOfOwnerResult.decode("int");
-				const decodedOwnerOfResult = ownerOfResult.result.returnValue.toLowerCase()
-
-				assert.equal(decodedBalanceOfNotOwnerResult.value, expectedBalanceOfNotOwner)
-				assert.equal(decodedBalanceOfOwnerResult.value, expectedBalanceOfOwner)
-				assert.equal(decodedOwnerOfResult, config.notOwnerPubKeyHex)
-			})
-
-			it('non-owner of token shouldn`t be able to call approve', async () => {
-				//Arrange
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-				await deployContractPromise;
-
-				//Act
-				const unauthorizedApprovePromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-
-				//Assert
-				assert.isRejected(unauthorizedApprovePromise, 'Invocation failed');
-			})
-
-			it('non-owner of token shouldn`t be able to call transferFrom', async () => {
-				//Arrange
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-				await deployContractPromise;
-
-				//Act
-				const unauthorizedTransferPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-
-				//Assert
-				assert.isRejected(unauthorizedTransferPromise, 'Non-owner was able to transferFrom');
+	
+			describe('Transfer', () => {
+				it('should transfer token successfully', async () => {
+					//Arrange
+					const expectedBalanceOfNotOwner = 1;
+					const expectedBalanceOfOwner = 0;
+					
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					//Act
+					const setApprovalForAllPromise = deployedContract.call('setApprovalForAll', { args: `(${config.pubKeyHex},${true})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(setApprovalForAllPromise, 'Could not call setApprovalForAll');
+					const setApprovalForAllResult = await setApprovalForAllPromise;
+	
+					const approvePromise = deployedContract.call('approve', { args: `(${firstTokenId}, ${config.notOwnerPubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(approvePromise, 'Could not call approve');
+					const approveResult = await approvePromise;
+	
+					const transferFromPromise = deployedContract.call('transferFrom', { args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(transferFromPromise, 'Could not call transferFrom');
+					const transferFromResult = await transferFromPromise;
+	
+					const balanceOfNotOwnerPromise = deployedContract.call('balanceOf', { args: `(${config.notOwnerPubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(balanceOfNotOwnerPromise, 'Could not call balanceOf');
+					const balanceOfNotOwnerResult = await balanceOfNotOwnerPromise;
+	
+					const balanceOwnerPromise = deployedContract.call('balanceOf', { args: `(${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(balanceOwnerPromise, 'Could not call balanceOf');
+					const balanceOfOwnerResult = await balanceOwnerPromise;
+	
+					const ownerOfPromise = deployedContract.call('ownerOf', { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
+					const ownerOfResult = await ownerOfPromise;
+	
+					//Assert
+					const decodedBalanceOfNotOwnerResult = await balanceOfNotOwnerResult.decode("int");
+					const decodedBalanceOfOwnerResult = await balanceOfOwnerResult.decode("int");
+					const decodedOwnerOfResult = ownerOfResult.result.returnValue.toLowerCase()
+	
+					assert.equal(decodedBalanceOfNotOwnerResult.value, expectedBalanceOfNotOwner)
+					assert.equal(decodedBalanceOfOwnerResult.value, expectedBalanceOfOwner)
+					assert.equal(decodedOwnerOfResult, config.notOwnerPubKeyHex)
+				})
+	
+				it('non-owner of token shouldn`t be able to call approve', async () => {
+					//Arrange
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					//Act
+					const unauthorizedApprovePromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+	
+					//Assert
+					assert.isRejected(unauthorizedApprovePromise, 'Invocation failed');
+				})
+	
+				it('non-owner of token shouldn`t be able to call transferFrom', async () => {
+					//Arrange
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					//Act
+					const unauthorizedTransferPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+	
+					//Assert
+					assert.isRejected(unauthorizedTransferPromise, 'Non-owner was able to transferFrom');
+				})
 			})
 		})
 	})
