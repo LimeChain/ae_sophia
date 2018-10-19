@@ -269,6 +269,40 @@ describe('ERC721', () => {
 					assert.isRejected(unauthorizedTransferPromise, 'Non-owner was able to transferFrom');
 				})
 			})
+
+			describe('Metadata', () => {
+				it.only('should write/read token metadata successfully', async () => {
+					//Arrange
+					const expectedTokenURI = "LimeChain";
+	
+					//Act
+					const setURIPromise = deployedContract.call('setTokenURI', { args: `(${firstTokenId},"LimeChain")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(setURIPromise, 'Could not call setTokenURI');
+					const setURIResult = await setURIPromise;
+	
+					const tokenURIPromise = deployedContract.call('tokenURI', { args: `(${firstTokenId}`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					assert.isFulfilled(tokenURIPromise, 'Could not call approve');
+					const tokenURIResult = await tokenURIPromise;
+	
+					//Assert
+					// const decodedTokenURIResult = await tokenURIResult.decode("string");
+				
+					// assert.equal(decodedTokenURIResult, expectedTokenURI)
+				})
+	
+				it('non-owner of token shouldn`t be able to call approve', async () => {
+					//Arrange
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					// //Act
+					// const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+	
+					// //Assert
+					// assert.isRejected(unauthorizedBurnPromise, 'Non-owner was able to approve');
+				})
+			})
 		})
 	})
 
