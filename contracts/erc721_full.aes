@@ -26,7 +26,7 @@ contract ERC721 =
   public function ownerOf(tokenId : int) : address = lookupById(tokenId, state.tokenOwner, #0)
   public function getApproved(tokenId : int) : address = lookupById(tokenId, state.tokenApprovals, #0)
   public function isApprovedForAll(owner : address, operator : address) : bool = state.operatorApprovals[owner][operator]
-  public function tokenURI(tokenId : int) = lookupById(tokenId, state.tokenURIs, "")
+  public function tokenURI(tokenId : int) : string = lookupById(tokenId, state.tokenURIs, "")
 
   public stateful function setTokenURI(tokenId : int, uri : string) : bool =
     onlyTokenOwner(Call.caller, tokenId)

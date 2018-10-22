@@ -158,7 +158,7 @@ describe('ERC721', () => {
 					const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
 					const decodedBalanceOfResult = await balanceOfResult.decode("int");
 	
-					assert.equal(decodedOwnerOfResult, config.pubKeyHex)
+					assert.equal(decodedOwnerOfResult.split('_')[1], config.ownerKeyPair.pub.split('_')[1].toLocaleLowerCase())
 					assert.equal(decodedBalanceOfResult.value, expectedBalance)
 				})
 	
@@ -246,7 +246,7 @@ describe('ERC721', () => {
 	
 					assert.equal(decodedBalanceOfNotOwnerResult.value, expectedBalanceOfNotOwner)
 					assert.equal(decodedBalanceOfOwnerResult.value, expectedBalanceOfOwner)
-					assert.equal(decodedOwnerOfResult, config.notOwnerPubKeyHex)
+					assert.equal(decodedOwnerOfResult.split('_')[1], config.notOwnerKeyPair.pub.split('_')[1].toLocaleLowerCase())
 				})
 	
 				it('non-owner of token shouldn`t be able to call approve', async () => {
@@ -266,7 +266,41 @@ describe('ERC721', () => {
 					const unauthorizedTransferPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
 	
 					//Assert
-					assert.isRejected(unauthorizedTransferPromise, 'Non-owner was able to transferFrom');
+					assert.isRejected(unauthorizedTransferPromise, 'Invocation failed');
+				})
+			})
+
+			describe('Metadata', () => {
+				it('should write/read token metadata successfully', async () => {
+					//Arrange
+					// const expectedTokenURI = "LimeChain";
+	
+					// //Act
+					// const setURIPromise = deployedContract.call('setTokenURI', { args: `(${firstTokenId},"LimeChain")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					// assert.isFulfilled(setURIPromise, 'Could not call setTokenURI');
+					// const setURIResult = await setURIPromise;
+	
+					// const tokenURIPromise = deployedContract.call('tokenURI', { args: `(${firstTokenId}`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+					// assert.isFulfilled(tokenURIPromise, 'Could not call approve');
+					// const tokenURIResult = await tokenURIPromise;
+	
+					//Assert
+					// const decodedTokenURIResult = await tokenURIResult.decode("string");
+				
+					// assert.equal(decodedTokenURIResult, expectedTokenURI)
+				})
+	
+				it('non-owner of token shouldn`t be able to call approve', async () => {
+					//Arrange
+					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
+					// await deployContractPromise;
+	
+					// //Act
+					// const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
+	
+					// //Assert
+					// assert.isRejected(unauthorizedBurnPromise, 'Non-owner was able to approve');
 				})
 			})
 		})

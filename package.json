@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --timeout 45000 'test/**/*.js' --exit"
+    "test": "mocha --timeout 0 'test/**/*.js' --exit"
   },
   "repository": {
     "type": "git",
@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/vsavovlime/ae_sophia#readme",
   "dependencies": {
-    "@aeternity/aepp-sdk": "https://github.com/aeternity/aepp-sdk-js.git#67163cfe9694e90b53b243eb90c6f71b76fea807",
+    "@aeternity/aepp-sdk": "https://github.com/aeternity/aepp-sdk-js.git#905862b0c412d07a56ef81d747ad9560cd303daf",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "mocha": "^5.2.0"
