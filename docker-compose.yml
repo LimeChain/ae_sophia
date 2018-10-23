@@ -2,7 +2,6 @@
 version: '3'
 services:
   node1:
-    build: .
     image: aeternity/epoch:v0.24.0
     hostname: node1
     environment:
