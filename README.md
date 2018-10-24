@@ -13,7 +13,7 @@ The main components of this repo:
 
 In order to run the unit tests one should do the following:
 1. spawn up the test network `docker-compose up -d`
-2. Wait for the network to be responding and healtyh
+2. Wait for the network to be responding and healthy
 3. Run `npm test`
 
 ## Nonce Disclaimer

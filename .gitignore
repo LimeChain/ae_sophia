@@ -9,5 +9,5 @@ docs/build
 .idea/
 .outputParameter
 nonce.txt
- erc721.aes.deploy*
- package-lock.json
+erc721.aes.deploy*
+package-lock.json
