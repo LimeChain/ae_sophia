@@ -127,10 +127,10 @@ contract ERC721 =
       abort(err)
 
   private function onlyOwner(owner : address) =
-    require(owner != state.owner, "Only owner can mint!")
+    require(owner == state.owner, "Only owner can mint!")
 
   private function onlyTokenOwner(owner : address, tokenId : token_id) =
-    require(owner != state.tokenOwner[tokenId], "Only token owner can transfer!")
+    require(owner == state.tokenOwner[tokenId], "Only token owner can transfer!")
 
   private function isApprovedOrOwner(spender : address, tokenId : token_id) : bool = 
     let owner : address = ownerOf(tokenId)
