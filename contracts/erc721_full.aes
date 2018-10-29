@@ -32,21 +32,13 @@ contract ERC721 =
     onlyTokenOwner(Call.caller, tokenId)
     put(state{ tokenURIs[tokenId] = uri })
 
-  //public stateful function mint(tokenId : token_id, to : address) = 
-  //   onlyOwner(Call.caller)
-  //   // require(!checkTokenExists(tokenId), "Token can't be overrided")
-
-  //   put(state{ 
-  //     tokenOwner[tokenId] = to,
-  //     ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
-  public stateful function mint(tokenId : token_id, to : address) : bool =
+  public stateful function mint(tokenId : token_id, to : address) = 
     onlyOwner(Call.caller)
-    if(checkTokenExists(tokenId) == true)
-      abort("Token can't be overrided")
+    require(!checkTokenExists(tokenId), "Token can't be overrided")
 
-    put(state{tokenOwner = state.tokenOwner{[tokenId] = to}})
-    put(state{ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
-    true
+    put(state{ 
+      tokenOwner[tokenId] = to,
+      ownedTokensCount[to] = add(lookupByAddress(to, state.ownedTokensCount, 0), 1)})
 
   public stateful function burn(tokenId : token_id) = 
     onlyTokenOwner(Call.caller, tokenId) 
