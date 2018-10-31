@@ -52,9 +52,14 @@ const fileExists = (relativePath) => {
 	return fs.existsSync(path.resolve(process.cwd(), relativePath));
 }
 
+const trimAdresseses = (addressToTrim) => {
+	return addressToTrim.substring(3)
+}
+
 module.exports = {
 	readFile,
 	readFileRelative,
 	writeFileRelative,
-	fileExists
+	fileExists,
+	trimAdresseses
 }
