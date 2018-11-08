@@ -98,9 +98,6 @@ contract ERC721 =
     require(_b =< _a, "Error")
     _a - _b
 
-  //todo use native abort!!
-  private function abort(err) = abort(err)
-
   private function require(b : bool, err : string) =
     if(!b) 
       abort(err)
