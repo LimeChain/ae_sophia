@@ -25,7 +25,7 @@ const config = {
 	nonceFile: 'nonce.txt',
 	sourceFile: './contracts/erc721_full.aes',
 	gas: 100000,
-	ttl: 500
+	ttl: 100
 }
 
 const tokenName = "Lime Token";
@@ -72,7 +72,7 @@ describe('ERC721', () => {
 					senderId: config.ownerKeyPair.publicKey,
 					recipientId: config.notOwnerKeyPair.publicKey,
 					payload: '',
-					ttl: 123,
+					ttl: config.ttl,
 					nonce: nonces.first++
 				})
 				const signed = await firstClient.signTransaction(tx)
