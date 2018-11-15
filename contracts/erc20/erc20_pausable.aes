@@ -1,4 +1,4 @@
-contract ERC20 =
+contract ERC20Pausable =
   record state = {
     _owner            : address, 
     _totalSupply      : int,
@@ -74,9 +74,9 @@ contract ERC20 =
 
     true
 
-  public stateful function _mint(account: address, value: int) : bool =
-    require(!state._paused, "Contract is paused")
+  public stateful function mint(account: address, value: int) : bool =
     onlyOwner(Call.caller)
+    require(!state._paused, "Contract is paused")
     require(account != #0, "Invalid address")
 
     state{_totalSupply = add(state._totalSupply, value),
@@ -84,7 +84,7 @@ contract ERC20 =
 
     true
 
-  public stateful function _burn(account: address, value: int) : bool =
+  public stateful function burn(account: address, value: int) : bool =
     require(!state._paused, "Contract is paused")
     onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
@@ -94,7 +94,7 @@ contract ERC20 =
 
     true
 
-  public stateful function _burnFrom(account: address, value: int) : bool =
+  public stateful function burnFrom(account: address, value: int) : bool =
     require(!state._paused, "Contract is paused")
     onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
@@ -112,7 +112,7 @@ contract ERC20 =
 
   public stateful function unpause() : bool = 
     onlyOwner(Call.caller)
-    state{_paused = true}
+    state{_paused = false}
 
     true
 

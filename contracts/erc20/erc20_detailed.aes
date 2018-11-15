@@ -1,4 +1,4 @@
-contract ERC20 =
+contract ERC20Detailed =
   record state = {
     _name             : string, 
     _symbol           : string, 
@@ -78,7 +78,7 @@ contract ERC20 =
 
     true
 
-  public stateful function _mint(account: address, value: int) : bool =
+  public stateful function mint(account: address, value: int) : bool =
     onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
@@ -87,7 +87,7 @@ contract ERC20 =
 
     true
 
-  public stateful function _burn(account: address, value: int) : bool =
+  public stateful function burn(account: address, value: int) : bool =
     onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
@@ -96,7 +96,7 @@ contract ERC20 =
 
     true
 
-  public stateful function _burnFrom(account: address, value: int) : bool =
+  public stateful function burnFrom(account: address, value: int) : bool =
     onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
