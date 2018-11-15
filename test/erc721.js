@@ -6,18 +6,18 @@ const utils = require('./utils');
 const readFileRelative = require('./utils').readFileRelative;
 const writeFileRelative = require('./utils').writeFileRelative;
 const AeSDK = require('@aeternity/aepp-sdk');
-const Ae = AeSDK.Cli;
+const Ae = AeSDK.Universal;
 
 const config = {
 	host: "http://localhost:3001/",
 	internalHost: "http://localhost:3001/internal/",
 	ownerKeyPair: {
-		priv: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-		pub: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
+		secretKey: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+		publicKey: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
 	},
 	notOwnerKeyPair: {
-		priv: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
-		pub: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
+		secretKey: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
+		publicKey: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
 	},
 	notOwnerPubKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
 	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
@@ -25,7 +25,7 @@ const config = {
 	nonceFile: 'nonce.txt',
 	sourceFile: './contracts/erc721_full.aes',
 	gas: 100000,
-	ttl: 500
+	ttl: 100
 }
 
 const tokenName = "Lime Token";
@@ -60,27 +60,29 @@ describe('ERC721', () => {
 			const fileNonces = readFileRelative(config.nonceFile, config.filesEncoding);
 			nonces = JSON.parse(fileNonces.toString())
 		} else {
-			nonces = {
-				first: 1,
-				second: 1
+			try{
+				nonces = {
+					first: 1,
+					second: 1
+				}
+
+				const { tx } = await firstClient.api.postSpend({
+					fee: 1,
+					amount: 1111111,
+					senderId: config.ownerKeyPair.publicKey,
+					recipientId: config.notOwnerKeyPair.publicKey,
+					payload: '',
+					ttl: config.ttl,
+					nonce: nonces.first++
+				})
+				const signed = await firstClient.signTransaction(tx)
+				await firstClient.api.postTransaction({ tx: signed })
+			}catch(e){
+				console.log(e.response.data.info)
 			}
-
-			const { tx } = await firstClient.api.postSpend({
-				fee: 1,
-				amount: 1111111,
-				senderId: config.ownerKeyPair.pub,
-				recipientId: config.notOwnerKeyPair.pub,
-				payload: '',
-				ttl: 555,
-				nonce: nonces.first++
-			})
-			const signed = await firstClient.signTransaction(tx)
-			await firstClient.api.postTransaction({ tx: signed })
-
 		}
 
 		console.log("Test suit starting with nonces", nonces.first, nonces.second);
-
 		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
 	})
 
@@ -91,12 +93,12 @@ describe('ERC721', () => {
 			const compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
 
 			//Act
-			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+			const deployPromise = compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++}, abi: "sophia"});
 			assert.isFulfilled(deployPromise, 'Could not deploy the erc721');
 
 			//Assert
 			const deployedContract = await deployPromise;
-			assert.equal(config.ownerKeyPair.pub, deployedContract.owner)
+			assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 		})
 
 	})
@@ -158,7 +160,7 @@ describe('ERC721', () => {
 					const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
 					const decodedBalanceOfResult = await balanceOfResult.decode("int");
 	
-					assert.equal(decodedOwnerOfResult.split('_')[1], config.ownerKeyPair.pub.split('_')[1].toLocaleLowerCase())
+					assert.equal(decodedOwnerOfResult.split('_')[1], config.ownerKeyPair.publicKey.split('_')[1].toLocaleLowerCase())
 					assert.equal(decodedBalanceOfResult.value, expectedBalance)
 				})
 	
@@ -246,7 +248,7 @@ describe('ERC721', () => {
 	
 					assert.equal(decodedBalanceOfNotOwnerResult.value, expectedBalanceOfNotOwner)
 					assert.equal(decodedBalanceOfOwnerResult.value, expectedBalanceOfOwner)
-					assert.equal(decodedOwnerOfResult.split('_')[1], config.notOwnerKeyPair.pub.split('_')[1].toLocaleLowerCase())
+					assert.equal(decodedOwnerOfResult.split('_')[1], config.notOwnerKeyPair.publicKey.split('_')[1].toLocaleLowerCase())
 				})
 	
 				it('non-owner of token shouldn`t be able to call approve', async () => {
@@ -256,7 +258,7 @@ describe('ERC721', () => {
 					const unauthorizedApprovePromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
 	
 					//Assert
-					assert.isRejected(unauthorizedApprovePromise, 'Invocation failed');
+					assert.isRejected(unauthorizedApprovePromise, 'bad_call_data');
 				})
 	
 				it('non-owner of token shouldn`t be able to call transferFrom', async () => {
@@ -266,7 +268,7 @@ describe('ERC721', () => {
 					const unauthorizedTransferPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
 	
 					//Assert
-					assert.isRejected(unauthorizedTransferPromise, 'Invocation failed');
+					assert.isRejected(unauthorizedTransferPromise, 'bad_call_data');
 				})
 			})
 
