@@ -23,9 +23,9 @@ const config = {
 	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
 	filesEncoding: 'utf-8',
 	nonceFile: 'nonce.txt',
-	sourceFile: './contracts/erc721_full.aes',
-	gas: 100000,
-	ttl: 100
+	sourceFile: './contracts/erc721/erc721_full.aes',
+	gas: 200000,
+	ttl: 55
 }
 
 const tokenName = "Lime Token";
@@ -75,6 +75,7 @@ describe('ERC721', () => {
 					ttl: config.ttl,
 					nonce: nonces.first++
 				})
+
 				const signed = await firstClient.signTransaction(tx)
 				await firstClient.api.postTransaction({ tx: signed })
 			}catch(e){
@@ -109,8 +110,7 @@ describe('ERC721', () => {
 
 		beforeEach(async () => {
 			compiledContract = await firstClient.contractCompile(erc721Source, { gas: config.gas })
-
-			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
+			deployedContract = await compiledContract.deploy({ initState: `("${tokenName}", "${tokenSymbol}")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++}, abi: "sophia"});
 		})
 
 		describe('Read', () => {
@@ -137,7 +137,7 @@ describe('ERC721', () => {
 
 		describe('Contract functionality', () => {
 			beforeEach(async () => {
-				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
+				const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ }, abi: "sophia"})
 				assert.isFulfilled(deployContractPromise, "Couldn't mint token");
 				await deployContractPromise;
 			})
@@ -166,7 +166,7 @@ describe('ERC721', () => {
 	
 				it('should not mint from non-owner', async () => {
 					const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-					assert.isRejected(unauthorisedPromise, 'Invocation failed');
+					assert.isRejected(unauthorisedPromise, 'bad_call_data');
 				})
 	
 				it('should not mint token with id that already exist', async () => {
@@ -176,7 +176,7 @@ describe('ERC721', () => {
 					const secondDeployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
 					
 					//Assert
-					assert.isRejected(secondDeployContractPromise, 'Invocation');
+					assert.isRejected(secondDeployContractPromise, 'bad_call_data');
 				})
 			})
 	
@@ -206,7 +206,7 @@ describe('ERC721', () => {
 					const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "burn", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
 	
 					//Assert
-					assert.isRejected(unauthorizedBurnPromise, 'Invocation failed');
+					assert.isRejected(unauthorizedBurnPromise, 'bad_call_data');
 				})
 			})
 	
