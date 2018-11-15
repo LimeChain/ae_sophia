@@ -69,7 +69,7 @@ contract ERC20Capped =
     true
 
   public stateful function mint(account: address, value: int) : bool =
-    onlyOwner(Call.caller)
+    onlyOwner()
     require(add(state._totalSupply, value) < state._cap, "Total supply exceeds cap")
     require(account != #0, "Invalid address")
 
@@ -99,5 +99,5 @@ contract ERC20Capped =
     if(!b) 
       abort(err)
 
-  private function onlyOwner(owner : address) =
-      require(owner == state._owner, "Only owner can mint!")
+  private function onlyOwner() =
+      require(Call.caller == state._owner, "Only owner can mint!")

@@ -66,7 +66,7 @@ contract ERC20 =
     true
 
   public stateful function mint(account: address, value: int) : bool =
-    onlyOwner(Call.caller)
+    onlyOwner()
     require(account != #0, "Invalid address")
 
     state{_totalSupply = add(state._totalSupply, value),
@@ -95,5 +95,5 @@ contract ERC20 =
     if(!b) 
       abort(err)
 
-  private function onlyOwner(owner : address) =
-      require(owner == state._owner, "Only owner can mint!")
+  private function onlyOwner() =
+      require(Call.caller == state._owner, "Only owner can mint!")

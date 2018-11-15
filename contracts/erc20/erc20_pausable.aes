@@ -75,7 +75,7 @@ contract ERC20Pausable =
     true
 
   public stateful function mint(account: address, value: int) : bool =
-    onlyOwner(Call.caller)
+    onlyOwner()
     require(!state._paused, "Contract is paused")
     require(account != #0, "Invalid address")
 
@@ -93,13 +93,13 @@ contract ERC20Pausable =
     true
 
   public stateful function pause() : bool = 
-    onlyOwner(Call.caller)
+    onlyOwner()
     state{_paused = true}
 
     true
 
   public stateful function unpause() : bool = 
-    onlyOwner(Call.caller)
+    onlyOwner()
     state{_paused = false}
 
     true
@@ -117,5 +117,5 @@ contract ERC20Pausable =
     if(!b) 
       abort(err)
 
-  private function onlyOwner(owner : address) =
-      require(owner == state._owner, "Only owner can mint!")
+  private function onlyOwner() =
+      require(Call.caller == state._owner, "Only owner can mint!")
