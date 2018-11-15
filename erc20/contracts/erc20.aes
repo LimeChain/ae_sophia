@@ -2,7 +2,7 @@ contract ERC20 =
   record state = { 
     _totalSupply      : int,
     _balances         : map(address, int),
-    _allowed          : map(address, map(address, int))}
+    _allowed          : map((address,address), int)}
 
   public stateful function init() = {
     _totalSupply = 0,
@@ -13,26 +13,24 @@ contract ERC20 =
   	switch(Map.lookup(k, m))
 	    None    => v
 	    Some(x) => x
-  
+
   public function totalSupply() : int = state._totalSupply
 
   public function balanceOf(who: address) : int = lookupByAddress(who, state._balances, 0)
 
-  public function allowance(owner: address, spender: address) : int =
-    let ownerAllowances : map(address, int) = lookupByAddress(owner, state._allowed, {})
-    lookupByAddress(spender, ownerAllowances, 0)
+  public function allowance(owner: address, spender: address) : int = 
+    switch(Map.lookup((owner, spender), state._allowed))
+	    None    => 0
+	    Some(x) => x
 
   public stateful function transfer(to: address, value: int) : bool =
     _transfer(Call.caller, to, value)
 
-  public function ensureApproveInitialised(key : address, m : map(address, int)) = m[key]
-
   public stateful function approve(spender: address, value: int) : bool = 
-    ensureApproveInitialised(spender, state._allowed[Call.caller])
     require(value > 0, "Value is sub zero")
     require(spender != #0, "Invalid spender address")
 
-    put(state{_allowed[Call.caller][spender] = value})
+    put(state{_allowed[(Call.caller,spender)] = value})
 
     true
 
@@ -55,8 +53,6 @@ contract ERC20 =
   private function sub(_a : int, _b : int) : int =
     require(_b =< _a, "Error")
     _a - _b
-
-  private function abort(err) = abort(err)
 
   private function require(b : bool, err : string) =
     if(!b) 

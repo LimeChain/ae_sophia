@@ -1,15 +1,12 @@
 contract TestContract =
   record state = { 
-    _allowed          : map(address, map(address, int))}
+    _allowed          : map((address, address), int)}
 
   public stateful function init() = {
     _allowed = {}}
 
-  public function ensureApproveInitialised(key : address, m : map(address, int)) = m[key]
 
   public function approve(spender : address, value : int) : bool = 
-    ensureApproveInitialised(spender, state._allowed[Call.caller])
-    put(state{_allowed[Call.caller][spender] = value})
+    put(state{_allowed[(Call.caller, spender)] = value})
     true
   
-
