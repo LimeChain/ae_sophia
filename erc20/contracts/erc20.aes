@@ -46,20 +46,20 @@ contract ERC20 =
     true
 
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
-    state{_allowed[from][Call.caller] = sub(state._allowed[from][Call.caller], value)}
+    state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)}
     _transfer(Call.caller, to, value)
 
     true
 
   public stateful function increaseAllowance(spender: address, addedValue: int) : bool =
     require(spender != #0, "Invalid address")
-    state{_allowed[Call.caller][spender] = add(state._allowed[Call.caller][spender], addedValue)}
+    state{_allowed[(Call.caller, spender)] = add(state._allowed[(Call.caller,spender)], addedValue)}
 
     true
 
   public stateful function decreaseAllowance(spender: address, subtractedValue: int) : bool =
     require(spender != #0, "Invalid address")
-    state{_allowed[Call.caller][spender] = sub(state._allowed[Call.caller][spender], subtractedValue)}
+    state{_allowed[(Call.caller,spender)] = sub(state._allowed[(Call.caller,spender)], subtractedValue)}
 
     true
 
@@ -82,7 +82,7 @@ contract ERC20 =
   public stateful function _burnFrom(account: address, value: int) : bool =
     require(account != #0, "Invalid address")
 
-    state{_allowed[account][Call.caller] = sub(state._allowed[account][Call.caller], value)}
+    state{_allowed[(account,Call.caller)] = sub(state._allowed[(account,Call.caller)], value)}
     _burn(account, value)
 
     true
