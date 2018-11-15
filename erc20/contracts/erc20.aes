@@ -47,6 +47,48 @@ contract ERC20 =
 
     true
 
+  public stateful function transferFrom(from: address, to: address, value: int) : bool =
+    state{_allowed[from][Call.caller] = sub(state._allowed[from][Call.caller], value)}
+    _transfer(Call.caller, to, value)
+
+    true
+
+  public stateful function increaseAllowance(spender: address, addedValue: int) : bool =
+    require(spender != #0, "Invalid address")
+    state{_allowed[Call.caller][spender] = add(state._allowed[Call.caller][spender], addedValue)}
+
+    true
+
+  public stateful function decreaseAllowance(spender: address, subtractedValue: int) : bool =
+    require(spender != #0, "Invalid address")
+    state{_allowed[Call.caller][spender] = sub(state._allowed[Call.caller][spender], subtractedValue)}
+
+    true
+
+  public stateful function _mint(account: address, value: int) : bool =
+    require(account != #0, "Invalid address")
+
+    state{_totalSupply = add(state._totalSupply, value),
+          _balances[account] = add(state._balances[account], value)}
+
+    true
+
+  public stateful function _burn(account: address, value: int) : bool =
+    require(account != #0, "Invalid address")
+
+    state{_totalSupply = sub(state._totalSupply, value),
+          _balances[account] = sub(state._balances[account], value)}
+
+    true
+
+  public stateful function _burnFrom(account: address, value: int) : bool =
+    require(account != #0, "Invalid address")
+
+    state{_allowed[account][Call.caller] = sub(state._allowed[account][Call.caller], value)}
+    _burn(account, value)
+
+    true
+
   private function add(_a : int, _b : int) : int =
     let c : int = _a + _b
     require(c >= _a, "Error")
@@ -55,8 +97,6 @@ contract ERC20 =
   private function sub(_a : int, _b : int) : int =
     require(_b =< _a, "Error")
     _a - _b
-
-  private function abort(err) = abort(err)
 
   private function require(b : bool, err : string) =
     if(!b) 
