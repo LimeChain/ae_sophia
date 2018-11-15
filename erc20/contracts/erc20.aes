@@ -1,10 +1,12 @@
 contract ERC20 =
-  record state = { 
+  record state = {
+    _owner            : address, 
     _totalSupply      : int,
     _balances         : map(address, int),
     _allowed          : map((address,address), int)}
 
   public stateful function init() = {
+    _owner = Call.caller,
     _totalSupply = 0,
     _balances = {},
     _allowed = {}}
@@ -64,6 +66,7 @@ contract ERC20 =
     true
 
   public stateful function _mint(account: address, value: int) : bool =
+    onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
     state{_totalSupply = add(state._totalSupply, value),
@@ -72,6 +75,7 @@ contract ERC20 =
     true
 
   public stateful function _burn(account: address, value: int) : bool =
+    onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
     state{_totalSupply = sub(state._totalSupply, value),
@@ -80,6 +84,7 @@ contract ERC20 =
     true
 
   public stateful function _burnFrom(account: address, value: int) : bool =
+    onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
     state{_allowed[(account,Call.caller)] = sub(state._allowed[(account,Call.caller)], value)}
@@ -99,3 +104,6 @@ contract ERC20 =
   private function require(b : bool, err : string) =
     if(!b) 
       abort(err)
+
+  private function onlyOwner(owner : address) =
+      require(owner == state._owner, "Only owner can mint!")
