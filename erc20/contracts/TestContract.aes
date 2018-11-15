@@ -1,0 +1,18 @@
+contract TestContract =
+  record state = { 
+    _allowed          : map(address, map(address, int))}
+
+  public stateful function init() = {
+    _allowed = {}}
+
+  private function ensureAllowed(key : address) =
+    switch(Map.lookup(key, state._allowed))
+      None => put(state{_allowed[key] = {}})
+      Some(_) => ()
+
+  public function approve(spender : address, value : int) : bool = 
+    ensureAllowed(Call.caller)
+    put(state{_allowed[Call.caller][spender] = value})
+    true
+  
+

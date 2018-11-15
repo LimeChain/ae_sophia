@@ -1,0 +1,66 @@
+contract ERC20 =
+  record state = { 
+    _totalSupply      : int,
+    _balances         : map(address, int),
+    _allowed          : map(address, map(address, int))}
+
+  public stateful function init() = {
+    _totalSupply = 0,
+    _balances = {},
+    _allowed = {}}
+
+  private function lookupByAddress(k : address, m, v) =
+  	switch(Map.lookup(k, m))
+	    None    => v
+	    Some(x) => x
+  
+  public function totalSupply() : int = state._totalSupply
+
+  public function balanceOf(who: address) : int = lookupByAddress(who, state._balances, 0)
+
+  public function allowance(owner: address, spender: address) : int =
+    let ownerAllowances : map(address, int) = lookupByAddress(owner, state._allowed, {})
+    lookupByAddress(spender, ownerAllowances, 0)
+
+  public stateful function transfer(to: address, value: int) : bool =
+    _transfer(Call.caller, to, value)
+
+  private stateful function ensureAllowed(key : address) =
+    switch(Map.lookup(key, state._allowed))
+      None => put(state{_allowed[key] = {}})
+      Some(_) => ()
+
+  public stateful function approve(spender: address, value: int) : bool = 
+    ensureAllowed(Call.caller)
+    require(value > 0, "Value is sub zero")
+    require(spender != #0, "Invalid spender address")
+
+    put(state{_allowed[Call.caller][spender] = value})
+
+    true
+
+  private stateful function _transfer(from: address, to: address, value: int) : bool =
+    require(value > 0, "Value is sub zero")
+    require((value =< balanceOf(from)), "Not enough balance")
+    require(to != #0, "Invalid address")
+
+    put(state{
+      _balances[from] = sub(state._balances[from], value),
+      _balances[to] = add(state._balances[to], value)})
+
+    true
+
+  private function add(_a : int, _b : int) : int =
+    let c : int = _a + _b
+    require(c >= _a, "Error")
+    c
+
+  private function sub(_a : int, _b : int) : int =
+    require(_b =< _a, "Error")
+    _a - _b
+
+  private function abort(err) = abort(err)
+
+  private function require(b : bool, err : string) =
+    if(!b) 
+      abort(err)
