@@ -29,7 +29,6 @@ contract Ownable =
 			
 		put(state{owner = newOwner})
 
-	private function abort(err) = abort(err)
-
  	private function require(b : bool, err : string) =
-  		if(!b) abort(err)
+  		if(!b)
+		   abort(err)
