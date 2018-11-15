@@ -101,7 +101,7 @@ contract ERC20Detailed =
     require(account != #0, "Invalid address")
 
     state{_allowed[(account,Call.caller)] = sub(state._allowed[(account,Call.caller)], value)}
-    _burn(account, value)
+    burn(account, value)
 
     true
 

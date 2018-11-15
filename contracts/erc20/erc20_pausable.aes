@@ -95,12 +95,12 @@ contract ERC20Pausable =
     true
 
   public stateful function burnFrom(account: address, value: int) : bool =
-    require(!state._paused, "Contract is paused")
     onlyOwner(Call.caller)
+    require(!state._paused, "Contract is paused")
     require(account != #0, "Invalid address")
 
     state{_allowed[(account,Call.caller)] = sub(state._allowed[(account,Call.caller)], value)}
-    _burn(account, value)
+    burn(account, value)
 
     true
   
