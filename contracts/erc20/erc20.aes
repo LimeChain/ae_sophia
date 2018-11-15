@@ -65,7 +65,7 @@ contract ERC20 =
 
     true
 
-  public stateful function _mint(account: address, value: int) : bool =
+  public stateful function mint(account: address, value: int) : bool =
     onlyOwner(Call.caller)
     require(account != #0, "Invalid address")
 
@@ -74,21 +74,11 @@ contract ERC20 =
 
     true
 
-  public stateful function _burn(account: address, value: int) : bool =
-    onlyOwner(Call.caller)
-    require(account != #0, "Invalid address")
+  public stateful function burn(value: int) : bool =
+    require(state._balances[Call.caller] >= value, "Burned amount is less than account balance")
 
     state{_totalSupply = sub(state._totalSupply, value),
-          _balances[account] = sub(state._balances[account], value)}
-
-    true
-
-  public stateful function _burnFrom(account: address, value: int) : bool =
-    onlyOwner(Call.caller)
-    require(account != #0, "Invalid address")
-
-    state{_allowed[(account,Call.caller)] = sub(state._allowed[(account,Call.caller)], value)}
-    _burn(account, value)
+          _balances[Call.caller] = sub(state._balances[Call.caller], value)}
 
     true
 
