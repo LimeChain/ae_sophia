@@ -3,7 +3,7 @@ let chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 const assert = chai.assert;
 const AeSDK = require('@aeternity/aepp-sdk');
-const Ae = AeSDK.Cli;
+const Ae = AeSDK.Universal;
 
 const utils = require('./utils');
 
@@ -11,22 +11,20 @@ const config = {
 	host: "http://localhost:3001/",
 	internalHost: "http://localhost:3001/internal/",
 	ownerKeyPair: {
-		priv: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-		pub: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
+		secretKey: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+		publicKey: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
 	},
 	notOwnerKeyPair: {
-		priv: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
-		pub: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
+		secretKey: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
+		publicKey: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
 	},
-	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-	notOwnerPubKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
+	publicKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+	notOwnerpublicKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
 	filesEncoding: 'utf-8',
-	nonceFile: 'nonce.txt',
 	sourceFile: './contracts/Ownable.aes',
 	gas: 100000,
-	ttl: 500
+	ttl: 122
 }
-let nonces;
 
 
 describe('Ownable', () => {
@@ -48,31 +46,23 @@ describe('Ownable', () => {
 			internalUrl: config.internalHost,
 			keypair: config.notOwnerKeyPair
 		});
-		if (utils.fileExists(config.nonceFile)) {
-			const fileNonces = utils.readFileRelative(config.nonceFile, config.filesEncoding);
-			nonces = JSON.parse(fileNonces.toString())
-		} else {
-			nonces = {
-				first: 1,
-				second: 1
-			}
-			const {
-				tx
-			} = await firstClient.api.postSpend({
-				fee: 1,
-				amount: 1,
-				senderId: config.ownerKeyPair.pub,
-				recipientId: config.notOwnerKeyPair.pub,
-				payload: '',
-				ttl: 555,
-				nonce: nonces.first++
-			})
-			const signed = await firstClient.signTransaction(tx)
 
-			await firstClient.api.postTransaction({
-				tx: signed
-			})
-		}
+		const {
+			tx
+		} = await firstClient.api.postSpend({
+			fee: 1,
+			amount: 1,
+			senderId: config.ownerKeyPair.publicKey,
+			recipientId: config.notOwnerKeyPair.publicKey,
+			payload: '',
+			ttl: 123
+		})
+		const signed = await firstClient.signTransaction(tx)
+
+		await firstClient.api.postTransaction({
+			tx: signed
+		})
+
 		ownableSource = utils.readFileRelative(config.sourceFile, config.filesEncoding);
 	})
 
@@ -89,14 +79,13 @@ describe('Ownable', () => {
 				options: {
 					ttl: config.ttl,
 					gas: config.gas,
-					nonce: nonces.first++
 				}
 			});
 
 			assert.isFulfilled(deployPromise, 'Could not deploy the Ownable Smart Contract');
 			//Assert
 			const deployedContract = await deployPromise;
-			assert.equal(config.ownerKeyPair.pub, deployedContract.owner)
+			assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 		})
 
 	})
@@ -114,9 +103,9 @@ describe('Ownable', () => {
 			deployedContract = await compiledContract.deploy({
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 		})
 
@@ -125,14 +114,14 @@ describe('Ownable', () => {
 			const callOwnerPromise = deployedContract.call('owner', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 			assert.isFulfilled(callOwnerPromise, 'Calling the owner function failed');
 			const callOwnerResult = await callOwnerPromise;
 
-			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.ownerKeyPair.pub))
+			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.ownerKeyPair.publicKey))
 
 		})
 
@@ -140,9 +129,9 @@ describe('Ownable', () => {
 			const callOnlyOwnerPromise = deployedContract.call('onlyOwner', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 
 			assert.isFulfilled(callOnlyOwnerPromise, 'Calling the onlyOwner function failed');
@@ -157,9 +146,9 @@ describe('Ownable', () => {
 			const callIsOwnerPromise = deployedContract.call('isOwner', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 			assert.isFulfilled(callIsOwnerPromise, 'Calling the onlyOwner function failed');
 			const callIsOwnerResult = await callIsOwnerPromise;
@@ -173,9 +162,9 @@ describe('Ownable', () => {
 			const callRenounceOwnershipPromise = deployedContract.call('renounceOwnership', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 			assert.isFulfilled(callRenounceOwnershipPromise, 'Calling the renounce ownerhip function failed');
 			const callRenounceOwnerhipResult = await callRenounceOwnershipPromise;
@@ -188,12 +177,12 @@ describe('Ownable', () => {
 		it('should transfer ownership of the contract', async () => {
 
 			const callTransferOwnerhipPromise = deployedContract.call('transferOwnership', {
-				args: `(${config.notOwnerPubKeyHex})`,
+				args: `(${config.notOwnerpublicKeyHex})`,
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			})
 			assert.isFulfilled(callTransferOwnerhipPromise, 'Calling transfer ownerhip function failed');
 			await callTransferOwnerhipPromise;
@@ -201,26 +190,26 @@ describe('Ownable', () => {
 			const callOwnerPromise = deployedContract.call('owner', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 			assert.isFulfilled(callOwnerPromise, 'Calling the owner function failed');
 			const callOwnerResult = await callOwnerPromise;
 
-			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.notOwnerKeyPair.pub))
+			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.notOwnerKeyPair.publicKey))
 		})
 
 		it('should throw if not owner call function onlyOwner', async () => {
 			const unauthorizedOnlyOwnerPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "onlyOwner", {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.second++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			})
 
-			assert.isRejected(unauthorizedOnlyOwnerPromise, 'Calling the onlyOwner function failed');
+			assert.isRejected(unauthorizedOnlyOwnerPromise, 'bad_call_data');
 
 		})
 
@@ -228,56 +217,54 @@ describe('Ownable', () => {
 			const unauthorizedRenounceOwnershipPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "renounceOwnership", {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.second++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			})
 
-			assert.isRejected(unauthorizedRenounceOwnershipPromise, 'Calling the renounce ownership function failed');
+			assert.isRejected(unauthorizedRenounceOwnershipPromise, 'bad_call_data')
+
 
 			const callOwnerPromise = deployedContract.call('owner', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 			assert.isFulfilled(callOwnerPromise, 'Calling the owner function failed');
 			const callOwnerResult = await callOwnerPromise;
 
-			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.ownerKeyPair.pub))
+			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.ownerKeyPair.publicKey))
 
 		})
 
 		it('should throw if not owner tries to change the ownership of the contract', async () => {
 			const unauthorizedTransferOwwnerhipPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferOwnership", {
-				args: `(${config.notOwnerPubKeyHex})`,
+				args: `(${config.notOwnerpublicKeyHex})`,
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.second++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			})
-			assert.isRejected(unauthorizedTransferOwwnerhipPromise, 'Calling the trasnfer ownership function failed');
 
+			assert.isRejected(unauthorizedTransferOwwnerhipPromise, 'bad_call_data')
 			const callOwnerPromise = deployedContract.call('owner', {
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
+					gas: config.gas
+				},
+				abi: "sophia"
 			});
 			assert.isFulfilled(callOwnerPromise, 'Calling the owner function failed');
 			const callOwnerResult = await callOwnerPromise;
 
-			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.ownerKeyPair.pub))
+			assert.equal(utils.trimAdresseses(callOwnerResult.result.returnValue), utils.trimAdresseses(config.ownerKeyPair.publicKey))
 		})
 	})
 
 
 
-	after(function () {
-		utils.writeFileRelative('nonce.txt', JSON.stringify(nonces))
-	});
 
 })

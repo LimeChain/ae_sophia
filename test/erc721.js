@@ -185,14 +185,7 @@ describe('ERC721', () => {
 
 		describe('Contract functionality', () => {
 			beforeEach(async () => {
-				const deployContractPromise = deployedContract.call('mint', {
-					args: `(${firstTokenId}, ${config.pubKeyHex})`,
-					options: {
-						ttl: config.ttl,
-						gas: config.gas,
-						nonce: nonces.first++
-					}
-				})
+
 				const deployContractPromise = deployedContract.call('mint', {
 					args: `(${firstTokenId}, ${config.pubKeyHex})`,
 					options: {
@@ -233,12 +226,11 @@ describe('ERC721', () => {
 					});
 					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
 					const balanceOfResult = await balanceOfPromise;
+					console.log(balanceOfResult)
 
 					//Assert
 					const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
 					const decodedBalanceOfResult = await balanceOfResult.decode("int");
-
-					assert.equal(decodedOwnerOfResult.split('_')[1], config.ownerKeyPair.pub.split('_')[1].toLocaleLowerCase())
 
 					assert.equal(decodedOwnerOfResult.split('_')[1], config.ownerKeyPair.publicKey.split('_')[1].toLocaleLowerCase())
 					assert.equal(decodedBalanceOfResult.value, expectedBalance)
@@ -271,6 +263,7 @@ describe('ERC721', () => {
 
 					//Assert
 					assert.isRejected(secondDeployContractPromise, 'bad_call_data');
+					console.log(secondDeployContractPromise)
 				})
 			})
 
