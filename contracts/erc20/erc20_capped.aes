@@ -21,6 +21,8 @@ contract ERC20Capped =
 
   public function totalSupply() : int = state._totalSupply
 
+  public function cap() : int = state._cap
+
   public function balanceOf(who: address) : int = lookupByAddress(who, state._balances, 0)
 
   public function allowance(owner: address, spender: address) : int = 
@@ -52,7 +54,7 @@ contract ERC20Capped =
 
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
     state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)}
-    _transfer(Call.caller, to, value)
+    _transfer(from, to, value)
 
     true
 

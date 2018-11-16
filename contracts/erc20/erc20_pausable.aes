@@ -56,7 +56,7 @@ contract ERC20Pausable =
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
     require(!state._paused, "Contract is paused")
     state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)}
-    _transfer(Call.caller, to, value)
+    _transfer(from, to, value)
 
     true
 
