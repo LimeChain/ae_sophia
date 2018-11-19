@@ -3,8 +3,6 @@ let chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 const assert = chai.assert;
 const utils = require('./utils');
-const readFileRelative = require('./utils').readFileRelative;
-const writeFileRelative = require('./utils').writeFileRelative;
 const AeSDK = require('@aeternity/aepp-sdk');
 const Ae = AeSDK.Universal;
 const config = require("./config.json")
@@ -44,7 +42,7 @@ describe('ERC721', () => {
         const signed = await firstClient.signTransaction(tx)
         await firstClient.api.postTransaction({ tx: signed })
 
-		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
+		erc721Source = utils.readFileRelative(sourceFile, config.filesEncoding);
 	})
 
 	describe('Deploy contract', () => {

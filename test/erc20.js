@@ -3,13 +3,9 @@ let chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 const assert = chai.assert;
 const utils = require('./utils');
-const readFileRelative = require('./utils').readFileRelative;
-const writeFileRelative = require('./utils').writeFileRelative;
 const AeSDK = require('@aeternity/aepp-sdk');
 const Universal = AeSDK.Universal;
 const config = require("./config.json")
-const gasUsed = 100000;
-const disc = 100000;
 
 const sourceFile =  "./contracts/erc20/erc20.aes"
 
