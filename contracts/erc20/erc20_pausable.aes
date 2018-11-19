@@ -55,7 +55,9 @@ contract ERC20Pausable =
 
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
     require(!state._paused, "Contract is paused")
-    state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)}
+    require(state._allowed[(from, Call.caller)] >= value, "Value is bigger than allowed")
+
+    put(state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)})
     _transfer(from, to, value)
 
     true
@@ -63,14 +65,14 @@ contract ERC20Pausable =
   public stateful function increaseAllowance(spender: address, addedValue: int) : bool =
     require(!state._paused, "Contract is paused")
     require(spender != #0, "Invalid address")
-    state{_allowed[(Call.caller, spender)] = add(state._allowed[(Call.caller,spender)], addedValue)}
+    put(state{_allowed[(Call.caller, spender)] = add(state._allowed[(Call.caller,spender)], addedValue)})
 
     true
 
   public stateful function decreaseAllowance(spender: address, subtractedValue: int) : bool =
     require(!state._paused, "Contract is paused")
     require(spender != #0, "Invalid address")
-    state{_allowed[(Call.caller,spender)] = sub(state._allowed[(Call.caller,spender)], subtractedValue)}
+    put(state{_allowed[(Call.caller,spender)] = sub(state._allowed[(Call.caller,spender)], subtractedValue)})
 
     true
 
@@ -79,28 +81,28 @@ contract ERC20Pausable =
     require(!state._paused, "Contract is paused")
     require(account != #0, "Invalid address")
 
-    state{_totalSupply = add(state._totalSupply, value),
-          _balances[account] = add(state._balances[account], value)}
+    put(state{_totalSupply = add(state._totalSupply, value),
+          _balances[account] = add(balanceOf(account), value)})
 
     true
 
   public stateful function burn(value: int) : bool =
-    require(state._balances[Call.caller] >= value, "Burned amount is less than account balance")
+    require(balanceOf(Call.caller) >= value, "Burned amount is less than account balance")
 
-    state{_totalSupply = sub(state._totalSupply, value),
-          _balances[Call.caller] = sub(state._balances[Call.caller], value)}
+    put(state{_totalSupply = sub(state._totalSupply, value),
+          _balances[Call.caller] = sub(balanceOf(Call.caller), value)})
 
     true
 
   public stateful function pause() : bool = 
     onlyOwner()
-    state{_paused = true}
+    put(state{_paused = true})
 
     true
 
   public stateful function unpause() : bool = 
     onlyOwner()
-    state{_paused = false}
+    put(state{_paused = false})
 
     true
 

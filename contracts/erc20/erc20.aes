@@ -32,36 +32,38 @@ contract ERC20 =
     require(value > 0, "Value is sub zero")
     require(spender != #0, "Invalid spender address")
 
-    put(state{_allowed[(Call.caller,spender)] = value})
+    put(state{_allowed[(Call.caller, spender)] = value})
 
     true
 
   private stateful function _transfer(from: address, to: address, value: int) : bool =
     require(value > 0, "Value is sub zero")
-    require((value =< balanceOf(from)), "Not enough balance")
+    require(value =< balanceOf(from), "Not enough balance")
     require(to != #0, "Invalid address")
-
+      
     put(state{
-      _balances[from] = sub(state._balances[from], value),
-      _balances[to] = add(state._balances[to], value)})
+      _balances[from] = sub(balanceOf(from), value),
+      _balances[to] = add(balanceOf(to), value)})
 
     true
 
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
-    state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)}
-    _transfer(Call.caller, to, value)
+    require(state._allowed[(from, Call.caller)] >= value, "Value is bigger than allowed")
+    
+    put(state{_allowed[(from, Call.caller)] = sub(state._allowed[(from, Call.caller)], value)})
+    _transfer(from, to, value)
 
     true
 
   public stateful function increaseAllowance(spender: address, addedValue: int) : bool =
     require(spender != #0, "Invalid address")
-    state{_allowed[(Call.caller, spender)] = add(state._allowed[(Call.caller,spender)], addedValue)}
+    put(state{_allowed[(Call.caller, spender)] = add(state._allowed[(Call.caller,spender)], addedValue)})
 
     true
 
   public stateful function decreaseAllowance(spender: address, subtractedValue: int) : bool =
     require(spender != #0, "Invalid address")
-    state{_allowed[(Call.caller,spender)] = sub(state._allowed[(Call.caller,spender)], subtractedValue)}
+    put(state{_allowed[(Call.caller,spender)] = sub(state._allowed[(Call.caller,spender)], subtractedValue)})
 
     true
 
@@ -69,16 +71,16 @@ contract ERC20 =
     onlyOwner()
     require(account != #0, "Invalid address")
 
-    state{_totalSupply = add(state._totalSupply, value),
-          _balances[account] = add(state._balances[account], value)}
+    put(state{_totalSupply = add(state._totalSupply, value),
+          _balances[account] = add(balanceOf(account), value)})
 
     true
 
   public stateful function burn(value: int) : bool =
-    require(state._balances[Call.caller] >= value, "Burned amount is less than account balance")
+    require(balanceOf(Call.caller) >= value, "Burned amount is less than account balance")
 
-    state{_totalSupply = sub(state._totalSupply, value),
-          _balances[Call.caller] = sub(state._balances[Call.caller], value)}
+    put(state{_totalSupply = sub(state._totalSupply, value),
+          _balances[Call.caller] = sub(balanceOf(Call.caller), value)})
 
     true
 
