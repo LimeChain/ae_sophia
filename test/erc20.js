@@ -6,7 +6,6 @@ const utils = require('./utils');
 const AeSDK = require('@aeternity/aepp-sdk');
 const Universal = AeSDK.Universal;
 const config = require("./config.json")
-
 const sourceFile =  "./contracts/erc20/erc20.aes"
 
 describe('ERC20', () => {
