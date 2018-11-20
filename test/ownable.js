@@ -3,7 +3,7 @@ let chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 const assert = chai.assert;
 const AeSDK = require('@aeternity/aepp-sdk');
-const Ae = AeSDK.Universal;
+const Universal = AeSDK.Universal;
 
 const utils = require('./utils');
 
@@ -36,12 +36,12 @@ describe('Ownable', () => {
 
 	before(async () => {
 
-		firstClient = await Ae({
+		firstClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
 			keypair: config.ownerKeyPair
 		});
-		secondClient = await Ae({
+		secondClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
 			keypair: config.notOwnerKeyPair
