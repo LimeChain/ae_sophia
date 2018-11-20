@@ -3,8 +3,6 @@ let chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 const assert = chai.assert;
 const utils = require('./utils');
-const readFileRelative = require('./utils').readFileRelative;
-const writeFileRelative = require('./utils').writeFileRelative;
 const AeSDK = require('@aeternity/aepp-sdk');
 const Ae = AeSDK.Universal;
 
@@ -27,13 +25,9 @@ const config = {
 	ttl: 55
 }
 
-const tokenName = "Lime Token";
+const tokenName = "Test Token";
 const tokenSymbol = "NFT";
-const gasUsed = 100000;
 const firstTokenId = 0;
-const secondTokenId = 1;
-const thirdTokenId = 2;
-const nonExistentTokenId = 123;
 
 describe('ERC721', () => {
 
@@ -251,40 +245,6 @@ describe('ERC721', () => {
 	
 					//Assert
 					assert.isRejected(unauthorizedTransferPromise, 'bad_call_data');
-				})
-			})
-
-			describe('Metadata', () => {
-				it('should write/read token metadata successfully', async () => {
-					//Arrange
-					// const expectedTokenURI = "LimeChain";
-	
-					// //Act
-					// const setURIPromise = deployedContract.call('setTokenURI', { args: `(${firstTokenId},"LimeChain")`, options: { ttl: config.ttl, gas: config.gas } });
-					// assert.isFulfilled(setURIPromise, 'Could not call setTokenURI');
-					// const setURIResult = await setURIPromise;
-	
-					// const tokenURIPromise = deployedContract.call('tokenURI', { args: `(${firstTokenId}`, options: { ttl: config.ttl, gas: config.gas } });
-					// assert.isFulfilled(tokenURIPromise, 'Could not call approve');
-					// const tokenURIResult = await tokenURIPromise;
-	
-					//Assert
-					// const decodedTokenURIResult = await tokenURIResult.decode("string");
-				
-					// assert.equal(decodedTokenURIResult, expectedTokenURI)
-				})
-	
-				it('non-owner of token shouldn`t be able to call approve', async () => {
-					//Arrange
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
-	
-					// //Act
-					// const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas } })
-	
-					// //Assert
-					// assert.isRejected(unauthorizedBurnPromise, 'Non-owner was able to approve');
 				})
 			})
 		})
