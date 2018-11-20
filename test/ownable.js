@@ -6,25 +6,27 @@ const AeSDK = require('@aeternity/aepp-sdk');
 const Universal = AeSDK.Universal;
 
 const utils = require('./utils');
+const config = require('./config.json')
+const sourceFile = './contracts/Ownable.aes';
 
-const config = {
-	host: "http://localhost:3001/",
-	internalHost: "http://localhost:3001/internal/",
-	ownerKeyPair: {
-		secretKey: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-		publicKey: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
-	},
-	notOwnerKeyPair: {
-		secretKey: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
-		publicKey: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
-	},
-	publicKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-	notOwnerpublicKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
-	filesEncoding: 'utf-8',
-	sourceFile: './contracts/Ownable.aes',
-	gas: 100000,
-	ttl: 122
-}
+// const config = {
+// 	host: "http://localhost:3001/",
+// 	internalHost: "http://localhost:3001/internal/",
+// 	ownerKeyPair: {
+// 		secretKey: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+// 		publicKey: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
+// 	},
+// 	notOwnerKeyPair: {
+// 		secretKey: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
+// 		publicKey: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
+// 	},
+// 	publicKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+// 	notOwnerpublicKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
+// 	filesEncoding: 'utf-8',
+// 	sourceFile: './contracts/Ownable.aes',
+// 	gas: 100000,
+// 	ttl: 122
+// }
 
 
 describe('Ownable', () => {
@@ -63,7 +65,7 @@ describe('Ownable', () => {
 			tx: signed
 		})
 
-		ownableSource = utils.readFileRelative(config.sourceFile, config.filesEncoding);
+		ownableSource = utils.readFileRelative(sourceFile, config.filesEncoding);
 	})
 
 	describe('Deploy contract', () => {
@@ -177,7 +179,7 @@ describe('Ownable', () => {
 		it('should transfer ownership of the contract', async () => {
 
 			const callTransferOwnerhipPromise = deployedContract.call('transferOwnership', {
-				args: `(${config.notOwnerpublicKeyHex})`,
+				args: `(${config.notOwnerPubKeyHex})`,
 				options: {
 					ttl: config.ttl,
 					gas: config.gas
@@ -241,7 +243,7 @@ describe('Ownable', () => {
 
 		it('should throw if not owner tries to change the ownership of the contract', async () => {
 			const unauthorizedTransferOwwnerhipPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferOwnership", {
-				args: `(${config.notOwnerpublicKeyHex})`,
+				args: `(${config.notOwnerPubKeyHex})`,
 				options: {
 					ttl: config.ttl,
 					gas: config.gas

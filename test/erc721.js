@@ -7,7 +7,7 @@ const AeSDK = require('@aeternity/aepp-sdk');
 const Ae = AeSDK.Universal;
 const config = require("./config.json")
 const sourceFile = './contracts/erc721/erc721_full.aes';
-const tokenName = "Lime Token";
+const tokenName = "AE Token";
 const tokenSymbol = "NFT";
 const firstTokenId = 0;
 
