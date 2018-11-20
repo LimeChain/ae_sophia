@@ -1,6 +1,6 @@
 # About this repo
 ## Overview
-This repo is representation of Solidity ERC721 and Ownable smart contracts written in Sophia language and based on the Aeternity blockchain. It is based on the Openzeppelin version of the contracts.
+This repo is representation of Solidity ERC721,ERC20 and its Flavours and Ownable smart contracts written in Sophia language and based on the Aeternity blockchain. It is based on the Openzeppelin version of the contracts.
 
 ## Structure
 
@@ -12,7 +12,7 @@ The main components of this repo:
 ## Running the tests
 
 In order to run the unit tests one should do the following:
-1. spawn up the test network `docker-compose up -d`
+1. spawn up the test network `docker-compose up -d` or `aeproject epoch`
 2. Wait for the network to be responding and healthy
 3. Run `npm test` or `aeproject test`
 

@@ -3,44 +3,18 @@ let chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 const assert = chai.assert;
 const utils = require('./utils');
-const readFileRelative = require('./utils').readFileRelative;
-const writeFileRelative = require('./utils').writeFileRelative;
 const AeSDK = require('@aeternity/aepp-sdk');
 const Ae = AeSDK.Universal;
-
-const config = {
-	host: "http://localhost:3001/",
-	internalHost: "http://localhost:3001/internal/",
-	ownerKeyPair: {
-		secretKey: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-		publicKey: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
-	},
-	notOwnerKeyPair: {
-		secretKey: 'e37484af730bc798ac10fdce7523dc24a64182dfe88ff139f739c1c7f3475434df473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d',
-		publicKey: 'ak_2hLLun8mZQvbEhaDxaWtJBsXLnhyokynwfMDZJ67TbqGoSCtQ9'
-	},
-	notOwnerPubKeyHex: "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
-	pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
-	filesEncoding: 'utf-8',
-	nonceFile: 'nonce.txt',
-	sourceFile: './contracts/erc721/erc721_full.aes',
-	gas: 200000,
-	ttl: 55
-}
-
+const config = require("./config.json")
+const sourceFile = './contracts/erc721/erc721_full.aes';
 const tokenName = "Lime Token";
 const tokenSymbol = "NFT";
-const gasUsed = 100000;
 const firstTokenId = 0;
-const secondTokenId = 1;
-const thirdTokenId = 2;
-const nonExistentTokenId = 123;
 
 describe('ERC721', () => {
 
 	let firstClient;
 	let secondClient;
-	let nonces;
 	let erc721Source;
 
 	before(async () => {
@@ -56,39 +30,23 @@ describe('ERC721', () => {
 			keypair: config.notOwnerKeyPair
 		});
 
-		if (utils.fileExists(config.nonceFile)) {
-			const fileNonces = readFileRelative(config.nonceFile, config.filesEncoding);
-			nonces = JSON.parse(fileNonces.toString())
-		} else {
-			try {
-				nonces = {
-					first: 1,
-					second: 1
-				}
+		const {
+			tx
+		} = await firstClient.api.postSpend({
+			fee: 1,
+			amount: 1111111,
+			senderId: config.ownerKeyPair.publicKey,
+			recipientId: config.notOwnerKeyPair.publicKey,
+			payload: '',
+			ttl: config.ttl
+		})
 
-				const {
-					tx
-				} = await firstClient.api.postSpend({
-					fee: 1,
-					amount: 1111111,
-					senderId: config.ownerKeyPair.publicKey,
-					recipientId: config.notOwnerKeyPair.publicKey,
-					payload: '',
-					ttl: config.ttl,
-					nonce: nonces.first++
-				})
+		const signed = await firstClient.signTransaction(tx)
+		await firstClient.api.postTransaction({
+			tx: signed
+		})
 
-				const signed = await firstClient.signTransaction(tx)
-				await firstClient.api.postTransaction({
-					tx: signed
-				})
-			} catch (e) {
-				console.log(e.response.data.info)
-			}
-		}
-
-		console.log("Test suit starting with nonces", nonces.first, nonces.second);
-		erc721Source = utils.readFileRelative(config.sourceFile, config.filesEncoding);
+		erc721Source = utils.readFileRelative(sourceFile, config.filesEncoding);
 	})
 
 	describe('Deploy contract', () => {
@@ -104,8 +62,7 @@ describe('ERC721', () => {
 				initState: `("${tokenName}", "${tokenSymbol}")`,
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
+					gas: config.gas
 				},
 				abi: "sophia"
 			});
@@ -126,24 +83,11 @@ describe('ERC721', () => {
 			compiledContract = await firstClient.contractCompile(erc721Source, {
 				gas: config.gas
 			})
-
 			deployedContract = await compiledContract.deploy({
 				initState: `("${tokenName}", "${tokenSymbol}")`,
 				options: {
 					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
-				}
-			});
-			compiledContract = await firstClient.contractCompile(erc721Source, {
-				gas: config.gas
-			})
-			deployedContract = await compiledContract.deploy({
-				initState: `("${tokenName}", "${tokenSymbol}")`,
-				options: {
-					ttl: config.ttl,
-					gas: config.gas,
-					nonce: nonces.first++
+					gas: config.gas
 				},
 				abi: "sophia"
 			});
@@ -157,8 +101,7 @@ describe('ERC721', () => {
 				const callNamePromise = deployedContract.call('name', {
 					options: {
 						ttl: config.ttl,
-						gas: config.gas,
-						nonce: nonces.first++
+						gas: config.gas
 					}
 				});
 				assert.isFulfilled(callNamePromise, 'Could call the name of the token');
@@ -167,8 +110,7 @@ describe('ERC721', () => {
 				const callSymbolPromise = deployedContract.call('symbol', {
 					options: {
 						ttl: config.ttl,
-						gas: config.gas,
-						nonce: nonces.first++
+						gas: config.gas
 					}
 				});
 				assert.isFulfilled(callSymbolPromise, 'Could call the symbol of the token');
@@ -185,13 +127,11 @@ describe('ERC721', () => {
 
 		describe('Contract functionality', () => {
 			beforeEach(async () => {
-
 				const deployContractPromise = deployedContract.call('mint', {
 					args: `(${firstTokenId}, ${config.pubKeyHex})`,
 					options: {
 						ttl: config.ttl,
-						gas: config.gas,
-						nonce: nonces.first++
+						gas: config.gas
 					},
 					abi: "sophia"
 				})
@@ -209,8 +149,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
@@ -220,13 +159,11 @@ describe('ERC721', () => {
 						args: `(${config.pubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
 					const balanceOfResult = await balanceOfPromise;
-					console.log(balanceOfResult)
 
 					//Assert
 					const decodedOwnerOfResult = await ownerOfResult.result.returnValue.toLowerCase()
@@ -241,8 +178,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId}, ${config.pubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.second++
+							gas: config.gas
 						}
 					})
 					assert.isRejected(unauthorisedPromise, 'bad_call_data');
@@ -256,14 +192,12 @@ describe('ERC721', () => {
 						args: `(${firstTokenId}, ${config.pubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					})
 
 					//Assert
 					assert.isRejected(secondDeployContractPromise, 'bad_call_data');
-					console.log(secondDeployContractPromise)
 				})
 			})
 
@@ -277,8 +211,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
@@ -288,8 +221,7 @@ describe('ERC721', () => {
 						args: `(${config.pubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
@@ -308,8 +240,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.second++
+							gas: config.gas
 						}
 					})
 
@@ -329,8 +260,7 @@ describe('ERC721', () => {
 						args: `(${config.pubKeyHex},${true})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(setApprovalForAllPromise, 'Could not call setApprovalForAll');
@@ -340,8 +270,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId}, ${config.notOwnerPubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(approvePromise, 'Could not call approve');
@@ -351,8 +280,7 @@ describe('ERC721', () => {
 						args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(transferFromPromise, 'Could not call transferFrom');
@@ -362,8 +290,7 @@ describe('ERC721', () => {
 						args: `(${config.notOwnerPubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(balanceOfNotOwnerPromise, 'Could not call balanceOf');
@@ -373,8 +300,7 @@ describe('ERC721', () => {
 						args: `(${config.pubKeyHex})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(balanceOwnerPromise, 'Could not call balanceOf');
@@ -384,8 +310,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.first++
+							gas: config.gas
 						}
 					});
 					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
@@ -409,8 +334,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.second++
+							gas: config.gas
 						}
 					})
 
@@ -426,8 +350,7 @@ describe('ERC721', () => {
 						args: `(${firstTokenId})`,
 						options: {
 							ttl: config.ttl,
-							gas: config.gas,
-							nonce: nonces.second++
+							gas: config.gas
 						}
 					})
 
@@ -436,43 +359,27 @@ describe('ERC721', () => {
 				})
 			})
 
-			describe('Metadata', () => {
-				it('should write/read token metadata successfully', async () => {
-					//Arrange
-					// const expectedTokenURI = "LimeChain";
+			//TODO fix this test
+			// describe('Metadata', () => {	
+			// 	it('should write/read token metadata successfully', async () => {	
+			// 		//Arrange	
+			// 		const expectedTokenURI = "Token";	
 
-					// //Act
-					// const setURIPromise = deployedContract.call('setTokenURI', { args: `(${firstTokenId},"LimeChain")`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-					// assert.isFulfilled(setURIPromise, 'Could not call setTokenURI');
-					// const setURIResult = await setURIPromise;
+			// 		//Act	
+			// 		const setURIPromise = deployedContract.call('setTokenURI', { args: `(${firstTokenId}, "Token")`, options: { ttl: config.ttl, gas: config.gas } });	
+			// 		assert.isFulfilled(setURIPromise, 'Could not call setTokenURI');	
+			// 		await setURIPromise;	
 
-					// const tokenURIPromise = deployedContract.call('tokenURI', { args: `(${firstTokenId}`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } });
-					// assert.isFulfilled(tokenURIPromise, 'Could not call approve');
-					// const tokenURIResult = await tokenURIPromise;
+			// 		const tokenURIPromise = deployedContract.call('tokenURI', { args: `(${firstTokenId}`, options: { ttl: config.ttl, gas: config.gas } });	
+			// 		assert.isFulfilled(tokenURIPromise, 'Could not call approve');	
+			// 		const tokenURIResult = await tokenURIPromise;	
 
-					//Assert
-					// const decodedTokenURIResult = await tokenURIResult.decode("string");
+			// 		//Assert	
+			// 		const decodedTokenURIResult = await tokenURIResult.decode("string");	
 
-					// assert.equal(decodedTokenURIResult, expectedTokenURI)
-				})
-
-				it('non-owner of token shouldn`t be able to call approve', async () => {
-					//Arrange
-					// const deployContractPromise = deployedContract.call('mint', { args: `(${firstTokenId}, ${config.pubKeyHex})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.first++ } })
-					// assert.isFulfilled(deployContractPromise, "Couldn't mint token");
-					// await deployContractPromise;
-
-					// //Act
-					// const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "approve", { args: `(${firstTokenId})`, options: { ttl: config.ttl, gas: config.gas, nonce: nonces.second++ } })
-
-					// //Assert
-					// assert.isRejected(unauthorizedBurnPromise, 'Non-owner was able to approve');
-				})
-			})
+			// 		assert.equal(decodedTokenURIResult, expectedTokenURI)	
+			// 	})	
+			// })
 		})
 	})
-
-	after(function () {
-		writeFileRelative('nonce.txt', JSON.stringify(nonces))
-	});
 })
