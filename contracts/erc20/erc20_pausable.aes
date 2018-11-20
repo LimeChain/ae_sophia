@@ -55,6 +55,8 @@ contract ERC20Pausable =
 
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
     require(!state._paused, "Contract is paused")
+    require(state._allowed[(from, Call.caller)] >= value, "Value is bigger than allowed")
+
     put(state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)})
     _transfer(from, to, value)
 
@@ -80,17 +82,15 @@ contract ERC20Pausable =
     require(account != #0, "Invalid address")
 
     put(state{_totalSupply = add(state._totalSupply, value),
-          _balances[account] = add(state._balances[account], value)})
+          _balances[account] = add(balanceOf(account), value)})
 
     true
 
-  public stateful function burn(account: address, value: int) : bool =
-    onlyOwner()
-    require(!state._paused, "Contract is paused")
-    require(account != #0, "Invalid address")
+  public stateful function burn(value: int) : bool =
+    require(balanceOf(Call.caller) >= value, "Burned amount is less than account balance")
 
     put(state{_totalSupply = sub(state._totalSupply, value),
-          _balances[account] = sub(state._balances[account], value)})
+          _balances[Call.caller] = sub(balanceOf(Call.caller), value)})
 
     true
 
