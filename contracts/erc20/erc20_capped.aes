@@ -53,7 +53,7 @@ contract ERC20Capped =
     true
 
   public stateful function transferFrom(from: address, to: address, value: int) : bool =
-    put(put(state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)}))
+    put(state{_allowed[(from,Call.caller)] = sub(state._allowed[(from,Call.caller)], value)})
     _transfer(from, to, value)
 
     true
