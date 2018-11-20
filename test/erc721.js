@@ -29,6 +29,7 @@ const tokenName = "Test Token";
 const tokenSymbol = "NFT";
 const firstTokenId = 0;
 
+
 describe('ERC721', () => {
 
 	let firstClient;
@@ -247,6 +248,28 @@ describe('ERC721', () => {
 					assert.isRejected(unauthorizedTransferPromise, 'bad_call_data');
 				})
 			})
+
+			//TODO fix this test
+			// describe('Metadata', () => {	
+			// 	it('should write/read token metadata successfully', async () => {	
+			// 		//Arrange	
+			// 		const expectedTokenURI = "Token";	
+		
+			// 		//Act	
+			// 		const setURIPromise = deployedContract.call('setTokenURI', { args: `(${firstTokenId}, "Token")`, options: { ttl: config.ttl, gas: config.gas } });	
+			// 		assert.isFulfilled(setURIPromise, 'Could not call setTokenURI');	
+			// 		await setURIPromise;	
+		
+			// 		const tokenURIPromise = deployedContract.call('tokenURI', { args: `(${firstTokenId}`, options: { ttl: config.ttl, gas: config.gas } });	
+			// 		assert.isFulfilled(tokenURIPromise, 'Could not call approve');	
+			// 		const tokenURIResult = await tokenURIPromise;	
+		
+			// 		//Assert	
+			// 		const decodedTokenURIResult = await tokenURIResult.decode("string");	
+					
+			// 		assert.equal(decodedTokenURIResult, expectedTokenURI)	
+			// 	})	
+			// })
 		})
 	})
 })
