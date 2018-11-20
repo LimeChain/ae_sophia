@@ -32,7 +32,7 @@ contract ERC20 =
     require(value > 0, "Value is sub zero")
     require(spender != #0, "Invalid spender address")
 
-    put(state{_allowed[(Call.caller, spender)] = value})
+    put(state{_allowed[(Call.caller,spender)] = value})
 
     true
 
