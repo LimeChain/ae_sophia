@@ -18,6 +18,7 @@
   "homepage": "https://github.com/vsavovlime/ae_sophia#readme",
   "dependencies": {
     "@aeternity/aepp-sdk": "^0.25.0-0.1.0-next",
+    "aeproject": "file:../aeproject",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "mocha": "^5.2.0"

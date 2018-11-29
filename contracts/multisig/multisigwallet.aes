@@ -1,0 +1,116 @@
+// contract VotingType =
+//     public stateful function vote : string => ()
+
+contract MultiSigWallet =
+    record state = { 
+        required                      : int,
+        owner                         : address,
+        configured                    : bool, 
+        ownersCount                   : int,
+        owners                        : map(int, address),
+        ownerIndex                    : map(address, int),
+        transactionsCount             : int,
+        transactions                  : map(int, transaction)}
+    
+    record transaction = { 
+        id            : int,
+        confirmations : int,
+        method        : method}
+
+    datatype method = Vote | Revoke | Result
+          
+    public stateful function init(required : int) = {
+        required                           = required,
+        owner                              = Call.caller,
+        configured                         = false,
+        ownersCount                        = 0,
+        owners                             = {},
+        ownerIndex                         = {},
+        transactionsCount                  = 0,
+        transactions                       = {}}
+
+
+    public function getConfirmations(txId : int) : int =
+        state.transactions[txId].confirmations
+
+    public stateful function approve(txId : int) : bool = 
+        // onlyOwners()
+        // onlyConfigured()
+
+        let transaction : transaction = state.transactions[txId]
+
+        let transaction' = transaction { 
+            id = transaction.id, 
+            confirmations = transaction.confirmations + 1, 
+            method = transaction.method }
+
+        put(state{transactions = state.transactions{[txId] = transaction}})
+        
+        true
+
+    public stateful function addTransaction(method : method) : int = 
+        // onlyOwners()
+        // onlyConfigured()
+        //validate method !?
+
+        let tx : transaction = {
+            id             = 0,
+            confirmations  = 0,
+            method         = method}
+
+        put(state{transactions = state.transactions{[state.transactionsCount] = tx}})
+        put(state{transactionsCount = state.transactionsCount + 1})  
+
+        state.transactionsCount
+
+    public stateful function  addOwner(owner : address) : int = 
+        onlyOwner()
+        onlyNotConfigured()
+        require(owner != Contract.address, "Address can't be same as contract address")
+        
+        put(state{ownersCount = state.ownersCount + 1})    
+        put(state{owners = state.owners{[state.ownersCount] = owner}})
+        put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}})
+
+        state.ownersCount
+
+
+    public stateful function configure() = 
+        onlyOwner()
+
+        put(state{configured = true})
+
+    private function onlyOwner() =
+        require(Call.caller == state.owner, "Only owner")
+        
+    private function onlyOwners() =
+        require(lookupByAddress(Call.caller, state.ownerIndex, 0) != 0, "Only owners")
+
+    private function lookupByAddress(k : address, m, v) =
+        switch(Map.lookup(k, m))
+            None    => v
+            Some(x) => x
+
+    private function lookupById(k : int, m, v) =
+        switch(Map.lookup(k, m))
+            None    => v
+            Some(x) => x
+
+    private function onlyNotConfigured() =
+        require(state.configured == false, "Only not configured")
+
+    private function onlyConfigured() =
+        require(state.configured == true, "Only configured")
+
+    private function require(b : bool, err : string) =
+        if(!b) 
+            abort(err)
+
+    private function add(_a : int, _b : int) : int =
+        let c : int = _a + _b
+        require(c >= _a, "Error")
+        c
+    
+    private function sub(_a : int, _b : int) : int =
+        require(_b =< _a, "Error")
+        _a - _b

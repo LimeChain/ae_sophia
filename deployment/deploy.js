@@ -14,10 +14,21 @@
  *  OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  *  PERFORMANCE OF THIS SOFTWARE.
  */
-const Ae = require('@aeternity/aepp-sdk').Cli;
+const Ae = require('@aeternity/aepp-sdk').Universal;
+const Deployer = require('aeproject').Deployer;
+const gasLimit = 1000000;
 
-const deploy = async () => {
+const deploy = async (network, privateKey) => {
+	let deployer = new Deployer(network, privateKey)
 
+	let deployedContract = await deployer.deploy("./contracts/multisig/multisigwallet.aes")
+	const result = await deployedContract.call('addTransaction', { args: `(Vote)`, options: { ttl: 55, gas: 200000 } });
+	console.log(result)
+	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit)
+	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit, {tokenName: "tkn"})
+
+	//todo edit package.json
+	//todo command keypair rework
 };
 
 module.exports = {
