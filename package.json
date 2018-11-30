@@ -1,31 +1,15 @@
 {
-  "name": "erc721-sophia",
+  "name": "aeproject-sample",
   "version": "1.0.0",
-  "description": "",
+  "description": "This is the default package.json generated for your project",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --timeout 0 'test/**/*.js' --exit"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vsavovlime/ae_sophia.git"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/vsavovlime/ae_sophia/issues"
-  },
-  "homepage": "https://github.com/vsavovlime/ae_sophia#readme",
   "dependencies": {
     "@aeternity/aepp-sdk": "^0.25.0-0.1.0-next",
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
-    "mocha": "^5.2.0"
-  },
-  "babel": {
-    "presets": [
-      "stage-3",
-      "latest"
-    ]
+    "aeproject": "git+https://github.com/aeternity/aeproject.git"
   }
 }
