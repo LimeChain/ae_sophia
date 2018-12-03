@@ -5,49 +5,57 @@ contract Voting =
 
 contract MultiSigWallet =
     record state = { 
-        required                      : int,
-        owner                         : address,
-        configured                    : bool, 
-        ownersCount                   : int,
-        owners                        : map(int, address),
-        ownerIndex                    : map(address, int),
-        removeOwner                   : map(address, int),
-        addOwner                      : map(address, int),
-        transactionsCount             : int,
-        transactions                  : map(int, transaction)}
+        owner                    : address,
+        configured               : bool, 
+        ownersCount              : int,
+        transactionsCount        : int,
+        required                 : int,
+        owners                   : map(int, address),
+        transactions             : map(int, transaction),
+        ownerIndex               : map(address, int),
+        removeOwner              : map(address, int),
+        addOwner                 : map(address, int),
+        removeOwnerConfirmations : map(address, map(address, bool)),
+        addOwnerConfirmations    : map(address, map(address, bool)),
+        txConfirmations          : map(int, map(address, bool))}
     
     record transaction = { 
         id            : int,
         confirmations : int,
         method        : string}
 
-    datatype method = Vote | Revoke | Result
+    datatype method = 
+        Vote   |  
+        Revoke | 
+        Result
           
     public stateful function init(required : int) = {
-        required                           = required,
-        owner                              = Call.caller,
-        configured                         = false,
-        ownersCount                        = 0,
-        owners                             = {},
-        ownerIndex                         = {},
-        transactionsCount                  = 0,
-        transactions                       = {},
-        removeOwner                        = {},
-        addOwner                           = {}}
-
+        required                 = required,
+        owner                    = Call.caller,
+        configured               = false,
+        ownersCount              = 0,
+        transactionsCount        = 0,
+        owners                   = {},
+        ownerIndex               = {},
+        transactions             = {},
+        removeOwner              = {},
+        addOwner                 = {},
+        txConfirmations          = {},
+        addOwnerConfirmations    = {},
+        removeOwnerConfirmations = {}}
 
     public function getConfirmations(txId : int) : int =
-        // onlyConfigured()
+        onlyConfigured()
 
         state.transactions[txId].confirmations
 
-
     public stateful function executeTransaction(txId : int, v : Voting) : bool = 
-        // onlyOwners()
-        // onlyConfigured()
+        onlyOwners()
+        onlyConfigured()
         validRequirement()
 
         let transaction : transaction = state.transactions[txId]
+        require(transaction.confirmations == state.ownersCount, "")
 
         switch(transaction.method)
             "Vote"   => v.vote()
@@ -55,10 +63,10 @@ contract MultiSigWallet =
 
         true
 
-
     public stateful function approve(txId : int) = 
-        // onlyOwners()
-        // onlyConfigured()
+        onlyOwners()
+        onlyConfigured()
+        require(state.txConfirmations[txId][Call.caller] == false, "")
 
         let transaction : transaction = state.transactions[txId]
 
@@ -67,12 +75,13 @@ contract MultiSigWallet =
             confirmations = transaction.confirmations + 1, 
             method = transaction.method }
 
+        put(state{txConfirmations[txId][Call.caller] = true})
         put(state{transactions = state.transactions{[txId] = transaction'}})
 
     public stateful function addTransaction(method : string) : int = 
-        // onlyOwners()
-        // onlyConfigured()
-        //validate method !?
+        onlyOwners()
+        onlyConfigured()
+        // validate method !?
 
         let tx : transaction = {
             id             = state.transactionsCount,
@@ -84,28 +93,28 @@ contract MultiSigWallet =
 
         tx.id
 
-
     public stateful function addOwner(owner : address, incrementRequired : bool)  = 
-        // onlyOwners()
-        // onlyConfigured()
+        onlyOwners()
+        onlyConfigured()
         require(state.addOwner[owner] == (state.required - 1), "Not enough votes to add new owner")
-        
+        require(state.addOwnerConfirmations[owner][Call.caller] == false, "")
+
         addNewOwner(owner)
 
         if(incrementRequired)
             put(state{required = state.required + 1})    
-            
 
     public stateful function initOwner(owner : address) = 
-        // onlyOwner()
-        // onlyNotConfigured()
+        onlyOwner()
+        onlyNotConfigured()
 
         addNewOwner(owner)
 
     public stateful function removeOwner(owner : address) =
-        // onlyOwners()
-        // onlyConfigured()
-        require((state.required - 1) == state.removeOwner[owner], "Not enough votes to remove owner")
+        onlyOwners()
+        onlyConfigured()
+        require(state.required == (state.removeOwner[owner] - 1), "Not enough votes to remove owner")
+        require(state.removeOwnerConfirmations[owner][Call.caller] == false, "")
 
         let ownerId = state.ownerIndex[owner]
 
@@ -115,16 +124,18 @@ contract MultiSigWallet =
         put(state{ownersCount = state.ownersCount - 1})    
         put(state{required = state.required - 1})    
 
-
     public stateful function voteRemoveOwner(owner : address) =
-        // onlyOwners()
-        // onlyConfigured()
+        onlyOwners()
+        onlyConfigured()
+        require(state.removeOwnerConfirmations[owner][Call.caller] == false, "")
         
         put(state{removeOwner = state.removeOwner{[owner] = state.removeOwner[owner] + 1}})
 
     public stateful function voteAddOwner(owner : address) =
-        // onlyOwners()
-        // onlyConfigured()
+        onlyOwners()
+        onlyConfigured()
+        require(state.addOwnerConfirmations[owner][Call.caller] == false, "")
+        
         put(state{addOwner = state.addOwner{[owner] = state.addOwner[owner] + 1}})
 
     public stateful function configure() = 

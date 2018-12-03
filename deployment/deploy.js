@@ -21,14 +21,15 @@ const gasLimit = 1000000;
 const deploy = async (network, privateKey) => {
 	let deployer = new Deployer(network, privateKey)
 
-	let deployedContract = await deployer.deploy("./contracts/multisig/multisigwallet.aes", 200000, "1")
-	const result = await deployedContract.call('addTransaction', { args: `"vote"`, options: { ttl: 123, gas: 200000 } });
-	const result21 = await deployedContract.call('approve', { args: `0`, options: { ttl: 123, gas: 200000 } });
-	const result3 = await deployedContract.call('getConfirmations', { args: `0`, options: { ttl: 123, gas: 200000 } });
+	let deployedContract = await deployer.deploy("./contracts/multisig/test.aes", 200000, "1")
+	// const result = await deployedContract.call('addTransaction', { args: `"vote"`, options: { ttl: 123, gas: 200000 } });
+	// const result21 = await deployedContract.call('approve', { args: `0`, options: { ttl: 123, gas: 200000 } });
+	// const result3 = await deployedContract.call('getConfirmations', { args: `0`, options: { ttl: 123, gas: 200000 } });
+	const result3 = await deployedContract.call('execute', { args: `0`, options: { ttl: 123, gas: 200000 } });
 	
-	const result3Decode = await result3.decode("int");
+	// const result3Decode = await result3.decode("int");
 	
-	console.log(result3Decode)
+	// console.log(result3Decode)
 	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit)
 	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit, {tokenName: "tkn"})
 
