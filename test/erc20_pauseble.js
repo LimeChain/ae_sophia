@@ -8,7 +8,7 @@ const Universal = AeSDK.Universal;
 const config = require("./config.json")
 const sourceFile =  "./contracts/erc20/erc20_pausable.aes"
 
-describe('ERC20', () => {
+describe('ERC20 Pauseable', () => {
 
 	let firstClient;
 	let secondClient;

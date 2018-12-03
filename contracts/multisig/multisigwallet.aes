@@ -1,5 +1,7 @@
-// contract VotingType =
-//     public stateful function vote : string => ()
+contract Voting =
+    public function vote   : () => bool
+    public function revoke : () => bool
+    public function result : () => int
 
 contract MultiSigWallet =
     record state = { 
@@ -9,13 +11,15 @@ contract MultiSigWallet =
         ownersCount                   : int,
         owners                        : map(int, address),
         ownerIndex                    : map(address, int),
+        removeOwner                   : map(address, int),
+        addOwner                      : map(address, int),
         transactionsCount             : int,
         transactions                  : map(int, transaction)}
     
     record transaction = { 
         id            : int,
         confirmations : int,
-        method        : method}
+        method        : string}
 
     datatype method = Vote | Revoke | Result
           
@@ -27,13 +31,32 @@ contract MultiSigWallet =
         owners                             = {},
         ownerIndex                         = {},
         transactionsCount                  = 0,
-        transactions                       = {}}
+        transactions                       = {},
+        removeOwner                        = {},
+        addOwner                           = {}}
 
 
     public function getConfirmations(txId : int) : int =
+        // onlyConfigured()
+
         state.transactions[txId].confirmations
 
-    public stateful function approve(txId : int) : bool = 
+
+    public stateful function executeTransaction(txId : int, v : Voting) : bool = 
+        // onlyOwners()
+        // onlyConfigured()
+        validRequirement()
+
+        let transaction : transaction = state.transactions[txId]
+
+        switch(transaction.method)
+            "Vote"   => v.vote()
+            "Revoke" => v.revoke()
+
+        true
+
+
+    public stateful function approve(txId : int) = 
         // onlyOwners()
         // onlyConfigured()
 
@@ -44,41 +67,77 @@ contract MultiSigWallet =
             confirmations = transaction.confirmations + 1, 
             method = transaction.method }
 
-        put(state{transactions = state.transactions{[txId] = transaction}})
-        
-        true
+        put(state{transactions = state.transactions{[txId] = transaction'}})
 
-    public stateful function addTransaction(method : method) : int = 
+    public stateful function addTransaction(method : string) : int = 
         // onlyOwners()
         // onlyConfigured()
         //validate method !?
 
         let tx : transaction = {
-            id             = 0,
+            id             = state.transactionsCount,
             confirmations  = 0,
             method         = method}
 
         put(state{transactions = state.transactions{[state.transactionsCount] = tx}})
         put(state{transactionsCount = state.transactionsCount + 1})  
 
-        state.transactionsCount
+        tx.id
 
-    public stateful function  addOwner(owner : address) : int = 
-        onlyOwner()
-        onlyNotConfigured()
-        require(owner != Contract.address, "Address can't be same as contract address")
+
+    public stateful function addOwner(owner : address, incrementRequired : bool)  = 
+        // onlyOwners()
+        // onlyConfigured()
+        require(state.addOwner[owner] == (state.required - 1), "Not enough votes to add new owner")
         
-        put(state{ownersCount = state.ownersCount + 1})    
-        put(state{owners = state.owners{[state.ownersCount] = owner}})
-        put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}})
+        addNewOwner(owner)
 
-        state.ownersCount
+        if(incrementRequired)
+            put(state{required = state.required + 1})    
+            
 
+    public stateful function initOwner(owner : address) = 
+        // onlyOwner()
+        // onlyNotConfigured()
+
+        addNewOwner(owner)
+
+    public stateful function removeOwner(owner : address) =
+        // onlyOwners()
+        // onlyConfigured()
+        require((state.required - 1) == state.removeOwner[owner], "Not enough votes to remove owner")
+
+        let ownerId = state.ownerIndex[owner]
+
+        Map.delete(owner, state.removeOwner)
+        Map.delete(owner, state.ownerIndex)
+        Map.delete(ownerId, state.owners)
+        put(state{ownersCount = state.ownersCount - 1})    
+        put(state{required = state.required - 1})    
+
+
+    public stateful function voteRemoveOwner(owner : address) =
+        // onlyOwners()
+        // onlyConfigured()
+        
+        put(state{removeOwner = state.removeOwner{[owner] = state.removeOwner[owner] + 1}})
+
+    public stateful function voteAddOwner(owner : address) =
+        // onlyOwners()
+        // onlyConfigured()
+        put(state{addOwner = state.addOwner{[owner] = state.addOwner[owner] + 1}})
 
     public stateful function configure() = 
         onlyOwner()
 
         put(state{configured = true})
+
+    private stateful function addNewOwner(owner : address) =
+        require(owner != Contract.address, "Address can't be same as contract address")
+           
+        put(state{ownersCount = state.ownersCount + 1})    
+        put(state{owners = state.owners{[state.ownersCount] = owner}})
+        put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}}) 
 
     private function onlyOwner() =
         require(Call.caller == state.owner, "Only owner")
@@ -95,6 +154,11 @@ contract MultiSigWallet =
         switch(Map.lookup(k, m))
             None    => v
             Some(x) => x
+
+    private function validRequirement() =
+        require(state.ownersCount > 0, "Owners count should be greater than zero")
+        require(state.ownersCount =< state.required, "Owners count can't be greater than required")
+        require(state.required > 0, "Required should be greater than zeo")
 
     private function onlyNotConfigured() =
         require(state.configured == false, "Only not configured")
