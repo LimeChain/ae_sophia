@@ -28,11 +28,7 @@ contract ExchangeMarket =
 
   public stateful function getAnswer(oracle: oracle_id, query : query_id) : option(int) =
     Oracle.get_answer(oracle, query)
-    // switch (Oracle.get_answer(oracle, query)) 
-    //   None => ()
-    //   Some(newPrice) => newPrice
       
-
   function updateAePrice(_aePrice: int) =
     require(_aePrice > 0, "The price must be greater than zero")
     put(state{aePrice = _aePrice})

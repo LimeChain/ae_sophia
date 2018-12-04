@@ -70,6 +70,7 @@ describe('ERC721', () => {
 
 			//Assert
 			const deployedContract = await deployPromise;
+			
 			assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 		})
 

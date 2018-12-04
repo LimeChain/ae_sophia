@@ -67,6 +67,7 @@ describe('Ownable', () => {
 			assert.isFulfilled(deployPromise, 'Could not deploy the Ownable Smart Contract');
 			//Assert
 			const deployedContract = await deployPromise;
+			console.log(deployedContract);
 			assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 		})
 
