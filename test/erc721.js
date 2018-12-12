@@ -4,7 +4,7 @@ chai.use(chaiAsPromised);
 const assert = chai.assert;
 const utils = require('./utils');
 const AeSDK = require('@aeternity/aepp-sdk');
-const Ae = AeSDK.Universal;
+const Universal = AeSDK.Universal;
 const config = require("./config.json")
 const sourceFile = './contracts/erc721/erc721_full.aes';
 const tokenName = "AE Token";
@@ -18,33 +18,39 @@ describe('ERC721', () => {
 	let erc721Source;
 
 	before(async () => {
-		firstClient = await Ae({
+		firstClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.ownerKeyPair
+			keypair: config.ownerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
-		secondClient = await Ae({
+		secondClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.notOwnerKeyPair
+			keypair: config.notOwnerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
-		const {
-			tx
-		} = await firstClient.api.postSpend({
-			fee: 1,
-			amount: 1111111,
-			senderId: config.ownerKeyPair.publicKey,
-			recipientId: config.notOwnerKeyPair.publicKey,
-			payload: '',
-			ttl: config.ttl
-		})
+		// const {
+		// 	tx
+		// } = await firstClient.api.postSpend({
+		// 	fee: 1,
+		// 	amount: 1111111,
+		// 	senderId: config.ownerKeyPair.publicKey,
+		// 	recipientId: config.notOwnerKeyPair.publicKey,
+		// 	payload: '',
+		// 	ttl: config.ttl
+		// })
 
-		const signed = await firstClient.signTransaction(tx)
-		await firstClient.api.postTransaction({
-			tx: signed
-		})
+		// const signed = await firstClient.signTransaction(tx)
+		// await firstClient.api.postTransaction({
+		// 	tx: signed
+		// })
+		firstClient.setKeypair(config.ownerKeyPair)
+		await firstClient.spend(1, config.notOwnerKeyPair.publicKey)
 
 		erc721Source = utils.readFileRelative(sourceFile, config.filesEncoding);
 	})
@@ -70,7 +76,7 @@ describe('ERC721', () => {
 
 			//Assert
 			const deployedContract = await deployPromise;
-			
+
 			assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 		})
 

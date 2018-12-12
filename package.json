@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aeternity/aepp-sdk": "^0.25.0-0.1.0-next",
+    "@aeternity/aepp-sdk": "1.0.1",
     "aeproject": "git+https://github.com/aeternity/aeproject.git"
   }
 }
