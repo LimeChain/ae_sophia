@@ -70,7 +70,6 @@ describe('Ownable', () => {
 		let compiledContract;
 
 		beforeEach(async () => {
-
 			compiledContract = await firstClient.contractCompile(ownableSource, {
 				gas: config.gas
 			})
