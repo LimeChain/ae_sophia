@@ -1,0 +1,16 @@
+contract Oracle =
+
+  type query_type  = string
+  type answer_type = int
+  type oracle_id = oracle(query_type, answer_type)
+  type query_id  = oracle_query(query_type, answer_type)
+
+  function registerOracle( qfee : int, ttl  : int) : oracle_id =
+    Oracle.register(Contract.address, qfee, RelativeTTL(ttl))
+
+  function respondToQuestion(oracle : oracle_id, query : query_id, sign : signature, r : int)  =
+    Oracle.respond(oracle, query, signature = sign, r)
+
+  function getQuestion(oracle : oracle_id,
+                      question : query_id) : string =
+    Oracle.get_question(oracle, question)
