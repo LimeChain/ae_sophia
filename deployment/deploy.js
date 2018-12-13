@@ -17,23 +17,18 @@
 const Ae = require('@aeternity/aepp-sdk').Universal;
 const Deployer = require('aeproject').Deployer;
 const gasLimit = 1000000;
-const _aePrice = 100
-const _tokenPrice = 100
 
 const deploy = async (network, privateKey) => {
 	let deployer = new Deployer(network, privateKey)
 
-	let result = await deployer.deploy("./contracts/ExchangeMarket.aes", gasLimit, {
-		aeprice: `${_aePrice}`,
-		tokenPrice = `${_aePrice}`
-	})
+	let result = await deployer.deploy("./contracts/ExampleContract.aes")
 	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit)
 	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit, {tokenName: "tkn"})
-	console.log(result)
+
 	//todo edit package.json
 	//todo command keypair rework
 };
 
 module.exports = {
 	deploy
-};	
+};

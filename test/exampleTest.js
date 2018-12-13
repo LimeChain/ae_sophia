@@ -15,25 +15,32 @@
  *  PERFORMANCE OF THIS SOFTWARE.
  */
 const Ae = require('@aeternity/aepp-sdk').Universal;
-const Deployer = require('aeproject').Deployer;
-const gasLimit = 1000000;
-const _aePrice = 100
-const _tokenPrice = 100
 
-const deploy = async (network, privateKey) => {
-	let deployer = new Deployer(network, privateKey)
+const config = {
+  host: "http://localhost:3001/",
+  internalHost: "http://localhost:3001/internal/",
+  ownerKeyPair: {
+    secretKey: 'bb9f0b01c8c9553cfbaf7ef81a50f977b1326801ebf7294d1c2cbccdedf27476e9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+    publicKey: 'ak_2mwRmUeYmfuW93ti9HMSUJzCk1EYcQEfikVSzgo6k2VghsWhgU'
+  },
+  pubKeyHex: '0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca',
+}
 
-	let result = await deployer.deploy("./contracts/ExchangeMarket.aes", gasLimit, {
-		aeprice: `${_aePrice}`,
-		tokenPrice = `${_aePrice}`
-	})
-	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit)
-	// deployer.deploy("./contracts/ExampleContract.aes", gasLimit, {tokenName: "tkn"})
-	console.log(result)
-	//todo edit package.json
-	//todo command keypair rework
-};
+describe('Test', () => {
 
-module.exports = {
-	deploy
-};	
+  let firstClient;
+
+  before(async () => {
+    firstClient = await Ae({
+      url: config.host,
+      internalUrl: config.internalHost,
+      keypair: config.ownerKeyPair
+    });
+
+  })
+
+  it('some test', async () => {
+    // some test logic
+  })
+
+})
