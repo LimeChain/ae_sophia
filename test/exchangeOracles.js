@@ -1,18 +1,24 @@
 const chai = require('chai');
 let chaiAsPromised = require("chai-as-promised");
-chai.use(chaiAsPromised);
-const assert = chai.assert;
 const AeSDK = require('@aeternity/aepp-sdk');
-const Universal = AeSDK.Universal;
 const Deployer = require('aeproject').Deployer;
 const utils = require('./utils');
 const config = require('./config.json')
 const oracleSourceFile = './contracts/exchange/ExchangeOracle.aes';
 const marketSourceFile = './contracts/exchange/ExchangeMarket.aes';
+const bytes = require('@aeternity/aepp-sdk/es/utils/bytes');
+const BigNumber = require('bignumber.js');
+const Universal = AeSDK.Universal;
+const crypto = AeSDK.Crypto;
+const assert = chai.assert;
+chai.use(chaiAsPromised);
 const ttl = 100
 const qfee = 100
 const _aePrice = 1000
 const _tokenPrice = 1500
+const _updatedAePrice = 2000
+const _updatedTokenPrice = 2000
+const _zeroPrice = 0
 
 
 describe('ExchangeOracle', () => {
@@ -28,36 +34,28 @@ describe('ExchangeOracle', () => {
 		firstClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.ownerKeyPair
+			keypair: config.ownerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 		secondClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.notOwnerKeyPair
+			keypair: config.notOwnerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
-		const {
-			tx
-		} = await firstClient.api.postSpend({
-			fee: 1,
-			amount: 1,
-			senderId: config.ownerKeyPair.publicKey,
-			recipientId: config.notOwnerKeyPair.publicKey,
-			payload: '',
-			ttl: 123
-		})
-		const signed = await firstClient.signTransaction(tx)
 
-		await firstClient.api.postTransaction({
-			tx: signed
-		})
+		firstClient.setKeypair(config.ownerKeyPair)
+		await firstClient.spend(1, config.notOwnerKeyPair.publicKey)
 
 		oracleSource = utils.readFileRelative(oracleSourceFile, config.filesEncoding);
 		marketSource = utils.readFileRelative(marketSourceFile, config.filesEncoding);
 
 	})
 
-	xit('deploying oracle successfully', async () => {
+	it('deploying oracle successfully', async () => {
 		//Arrange
 		const compiledContract = await firstClient.contractCompile(oracleSource, {
 			gas: config.gas
@@ -66,8 +64,7 @@ describe('ExchangeOracle', () => {
 		//Act
 		const deployPromise = compiledContract.deploy({
 			options: {
-				ttl: config.ttl,
-				gas: config.gas,
+				ttl: config.ttl
 			}
 		});
 
@@ -77,7 +74,7 @@ describe('ExchangeOracle', () => {
 		assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 	})
 
-	xit('deploying market successfully', async () => {
+	it('deploying market successfully', async () => {
 		//Arrange
 		const compiledContract = await firstClient.contractCompile(marketSource, {
 			gas: config.gas
@@ -85,10 +82,9 @@ describe('ExchangeOracle', () => {
 
 		//Act
 		const deployPromise = compiledContract.deploy({
-			initState: `("${aePrice}", "${tokenPrice}")`,
+			initState: `("${_aePrice}", "${_tokenPrice}")`,
 			options: {
-				ttl: config.ttl,
-				gas: config.gas,
+				ttl: config.ttl
 			}
 		});
 
@@ -113,8 +109,7 @@ describe('ExchangeOracle', () => {
 
 			deployedOracleContract = await compiledOracleContract.deploy({
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
@@ -126,20 +121,18 @@ describe('ExchangeOracle', () => {
 			deployedMarketContract = await compiledMarketContract.deploy({
 				initState: `(${_aePrice}, ${_tokenPrice})`,
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
 		})
 
-		xit('should register an oracle successfully  ', async () => {
+		it('should register an oracle successfully  ', async () => {
 
 			const registerOraclePromise = deployedOracleContract.call('registerOracle', {
 				args: `(${qfee}, ${ttl})`,
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
@@ -148,29 +141,27 @@ describe('ExchangeOracle', () => {
 
 		})
 
-		xit('should make a query from the market ', async () => {
-			let oraclePublicKey = utils.trimAdresseses(deployedOracleContract.address)
-			let fixedOraclePubKey = `ok_${oraclePublicKey}`
+		it.only('should make a query from the market ', async () => {
 			let string = "aePrice"
+			let maxGas = 2000000000
 
 			const registerOraclePromise = deployedOracleContract.call('registerOracle', {
 				args: `(${qfee}, ${ttl})`,
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
 			assert.isFulfilled(registerOraclePromise, 'Registering the oracle has failed');
 			const registerOracleResult = await registerOraclePromise;
-			console.log(registerOracleResult)
-			let qfeeee = 120
-			let newTtl = 120
+			let encodedData = await registerOracleResult.decode('int')
+
 			const createQueryPromise = await deployedMarketContract.call('createQuery', {
-				args: `("${fixedOraclePubKey}", "${string}", ${qfeeee}, ${newTtl}, ${newTtl} )`,
+				args: `(${encodedData.value}, "${string}", ${qfee}, ${ttl}, ${ttl} )`,
 				options: {
 					ttl: config.ttl,
-					gas: config.gas
+					gas: maxGas,
+					gasLimit: maxGas
 				},
 				abi: "sophia"
 			});
@@ -183,31 +174,98 @@ describe('ExchangeOracle', () => {
 		})
 
 		it("should get the query_fee", async () => {
-			let oraclePublicKey = utils.trimAdresseses(deployedOracleContract.address)
-			let fixedOraclePubKey = `ok_${oraclePublicKey}`
-			let fee = 5
-			let newTTl = 2000
+
 			const registerOraclePromise = await deployedOracleContract.call('registerOracle', {
-				args: `(${fee}, ${newTTl})`,
+				args: `(${qfee}, ${ttl})`,
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
+			let encodedData = await registerOraclePromise.decode('int')
+
 			const getQueryFeePromise = await deployedMarketContract.call('queryFee', {
-				args: `("${fixedOraclePubKey}")`,
+				args: `(${encodedData.value})`,
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
-			console.log(getQueryFeePromise)
 			let decodedResult = await getQueryFeePromise.decode("int")
-			console.log(decodedResult)
-			assert
+			assert.equal(decodedResult.value, qfee, "The query fee is not correct")
 		})
+
+		it("should update the ae price", async () => {
+
+
+			const updatingAePricePromise = await deployedMarketContract.call('updateAePrice', {
+				args: `(${_updatedAePrice})`,
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
+
+			const getAePricePromise = await deployedMarketContract.call('getAePrice', {
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
+
+			let finalAePrice = await getAePricePromise.decode("int")
+			assert.equal(finalAePrice.value, _updatedAePrice, "Ae price was not updated properly")
+
+		})
+
+		it("should update the token price", async () => {
+
+
+			const updatingTokenPricePromise = await deployedMarketContract.call('updateTokenPrice', {
+				args: `(${_updatedTokenPrice})`,
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
+
+			const getTokenPricePromise = await deployedMarketContract.call('getTokenPrice', {
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
+
+			let finalTokenPrice = await getTokenPricePromise.decode("int")
+			assert.equal(finalTokenPrice.value, _updatedTokenPrice, "Token price was not updated properly")
+
+		})
+
+		it("should throw if the new price is not greater than zero", async () => {
+
+
+			const updatingAePricePromise = deployedMarketContract.call('updateAePrice', {
+				args: `(${_zeroPrice})`,
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
+
+			console.log(updatingAePricePromise)
+
+			const getAePricePromise = await deployedMarketContract.call('getAePrice', {
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
+
+			let finalAePrice = await getAePricePromise.decode("int")
+			assert.equal(finalAePrice.value, _aePrice, "Ae price was not updated properly")
+
+		})
+
 	})
 
 

@@ -82,20 +82,23 @@ describe('Ownable', () => {
 			});
 		})
 
-		it('should set the proper owner to the smart contarct', async () => {
+		it.only('should set the proper owner to the smart contarct', async () => {
 
 			const callOwnerPromise = deployedContract.call('owner', {
 				options: {
-					ttl: config.ttl
+					ttl: config.ttl,
+					gas: config.gas,
+					fee: 10000
 				},
 				abi: "sophia"
 			});
 
 			assert.isFulfilled(callOwnerPromise, 'Calling the owner function failed');
 			const callOwnerResult = await callOwnerPromise;
+			console.log(callOwnerResult)
 			let encodedData = await callOwnerResult.decode('address')
 			const ownerPublicKey = crypto.aeEncodeKey(bytes.toBytes(encodedData.value, true))
-
+			
 			assert.equal(ownerPublicKey, config.ownerKeyPair.publicKey)
 
 		})

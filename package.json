@@ -9,7 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aeternity/aepp-sdk": "1.0.1",
-    "aeproject": "git+https://github.com/aeternity/aeproject.git"
+    "@aeternity/aepp-sdk": "^1.1.2",
+    "aeproject": "git+https://github.com/aeternity/aeproject.git",
+    "bignumber.js": "^8.0.1",
+    "chai-as-promised": "^7.1.1"
   }
 }

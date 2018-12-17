@@ -56,10 +56,17 @@ const trimAdresseses = (addressToTrim) => {
 	return addressToTrim.substring(3)
 }
 
+function toHexString(byteArray) {
+	return Array.from(byteArray, function (byte) {
+		return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+	}).join('')
+}
+
 module.exports = {
 	readFile,
 	readFileRelative,
 	writeFileRelative,
 	fileExists,
-	trimAdresseses
+	trimAdresseses,
+	toHexString
 }
