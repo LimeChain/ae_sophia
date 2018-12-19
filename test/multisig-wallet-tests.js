@@ -32,6 +32,8 @@ const publicKeyToHex = utils.publicKeyToHex;
 let RANDOM_ADDRESS_1 = 'ak_gLYH5tAexTCvvQA6NpXksrkPJKCkLnB9MTDFTVCBuHNDJ3uZv';
 let RANDOM_ADDRESS_2 = 'ak_zPoY7cSHy2wBKFsdWJGXM7LnSjVt6cn1TWBDdRBUMC7Tur2NQ';
 let RANDOM_ADDRESS_3 = 'ak_tWZrf8ehmY7CyB1JAoBmWJEeThwWnDpU4NadUdzxVSbzDgKjP';
+let VALID_METHOD_NAME = 'Vote';
+let INVALID_METHOD_NAME = 'sayHello';
 
 async function getVotingContractInstance () {
 	let notOwnerConfig = JSON.parse(JSON.stringify(config));
@@ -63,13 +65,6 @@ describe('MultiSig', () => {
 				nativeMode: true,
 				networkId: 'ae_devnet'
 			});
-			// secondClient = await Universal({
-			// 	url: config.host,
-			// 	internalUrl: config.internalHost,
-			// 	keypair: config.notOwnerKeyPair,
-			// 	nativeMode: true,
-			// 	networkId: 'ae_devnet'
-			// });
 	
 			firstClient.setKeypair(config.ownerKeyPair)
 			await firstClient.spend(1, config.notOwnerKeyPair.publicKey)
@@ -138,7 +133,7 @@ describe('MultiSig', () => {
 		})
 
 		it('[NEGATIVE] NOT Configured, should NOT add tx', async () => {
-			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("someTx")`), errorMessages.ONLY_CONFIGURED);
+			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`), errorMessages.ONLY_CONFIGURED);
 		})
 
 		it('[NEGATIVE] NOT Configured, should NOT add owner', async () => {
@@ -253,43 +248,47 @@ describe('MultiSig', () => {
 
 		describe('Transaction functionality', function () {
 
-			it('should add transaction correct [check me]', async () => {
-				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`));
+			it('should add transaction correct', async () => {
+				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`));
+			});
+
+			it('[NEGATIVE] should NOT add transaction, invalid method name', async () => {
+				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${INVALID_METHOD_NAME}")`), errorMessages.INVALID_METHOD_NAME);
 			});
 
 			it('should add multiple transactions and increment tx id correct', async () => {
 				let txId = 0;
-				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				let resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === txId++, "Tx id is not correct");
 
-				funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === txId++, "Tx id is not correct");
 
-				funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === txId++, "Tx id is not correct");
 
-				funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				funcResult = await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === txId++, "Tx id is not correct");
 			});
 
 			it('[NEGATIVE] NOT owner should NOT add transaction', async () => {
-				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'addTransaction', `("sayHello")`), errorMessages.ONLY_OWNERS);
+				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'addTransaction', `("${VALID_METHOD_NAME}")`), errorMessages.ONLY_OWNERS);
 			});
 
 			it('Added transaction should have 0 confirmations', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'getConfirmations', `(0)`);
 				let resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === 0, "Transaction have confirmations");
 			});
 
 			it('Add 2 transaction and approve second one', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayGoodbye")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`);
 				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'getConfirmations', `(0)`);
@@ -302,8 +301,8 @@ describe('MultiSig', () => {
 			});
 
 			it('Add 2 transaction and approve both', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayGoodbye")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`);
@@ -321,8 +320,8 @@ describe('MultiSig', () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
 				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, "true")`);
 				
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayGoodbye")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`);
@@ -345,7 +344,7 @@ describe('MultiSig', () => {
 				let resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === 0, "Voting contract state is incorrect!");
 				
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("Vote")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 
 				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'executeTransaction', `(0, ${publicKeyToHex(votingContractInstance.address)})`));
@@ -364,14 +363,14 @@ describe('MultiSig', () => {
 				let votingContractInfo = await getDeployedContractInstance(Universal, notOwnerConfig, sf);
 				let votingContractInstance = votingContractInfo.deployedContract;
 
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("Vote")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				
 				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'executeTransaction', `(0, ${publicKeyToHex(votingContractInstance.address)})`), errorMessages.ONLY_OWNERS);
 			});
 
 			it('[NEGATIVE] Should NOT vote/approve for a transaction twice.', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`), errorMessages.ALREADY_VOTED);
@@ -386,7 +385,7 @@ describe('MultiSig', () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
 				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, "true")`);
 
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("Vote")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0)`);
@@ -410,7 +409,7 @@ describe('MultiSig', () => {
 
 				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`);
 				
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("sayHello")`);
+				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0)`);
 

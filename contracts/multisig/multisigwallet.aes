@@ -5,7 +5,6 @@ contract Voting =
 
 contract MultiSigWallet =
     record state = { 
-        isInitedCorrect          : bool,
         owner                    : address,
         configured               : bool, 
         ownersCount              : int,
@@ -31,6 +30,7 @@ contract MultiSigWallet =
         Result
           
     public stateful function init(required : int) = 
+        require(required >= 2, "'Required' should be equal or greater than 2!")
         { required                 = required,
           owner                    = Call.caller,
           configured               = false,
@@ -43,12 +43,7 @@ contract MultiSigWallet =
           addOwner                 = {},
           txConfirmations          = {},
           addOwnerConfirmations    = {},
-          removeOwnerConfirmations = {},
-          isInitedCorrect          = checkInit(required)}
-
-    private function checkInit(required : int) : bool =
-        require(required >= 2, "'Required' should be equal or greater than 2!")
-        true
+          removeOwnerConfirmations = {}}
 
     public stateful function initOwner(owner : address) = 
         onlyOwner()
@@ -64,7 +59,7 @@ contract MultiSigWallet =
     public stateful function voteAddOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
-        require(!getValueFromMapTuple(owner, Call.caller, state.addOwnerConfirmations), "Your vote already submitted.")
+        require(!getValueFromMapTuple(owner, Call.caller, state.addOwnerConfirmations), "Your vote has been already submitted.")
         
         put(state{addOwner[owner] = getValueAddressInt(owner, state.addOwner) + 1})
 
@@ -74,7 +69,7 @@ contract MultiSigWallet =
         onlyConfigured()
         onlyOwners()
         require(isOwnerExists(owner), "Address is not an owner!")
-        require(!getValueFromMapTuple(owner, Call.caller, state.removeOwnerConfirmations), "Your vote already submitted.")
+        require(!getValueFromMapTuple(owner, Call.caller, state.removeOwnerConfirmations), "Your vote has been already submitted.")
         
         put(state{removeOwner[owner] = getValueAddressInt(owner, state.removeOwner) + 1})
         put(state{removeOwnerConfirmations[(owner,Call.caller)] = true})
@@ -110,8 +105,6 @@ contract MultiSigWallet =
         put(state{ownersCount = state.ownersCount - 1})    
         put(state{required = calculateMinimumRequired(state.required)})
 
-
-
     public function getConfirmations(txId : int) : int =
         onlyConfigured()
 
@@ -134,7 +127,7 @@ contract MultiSigWallet =
     public stateful function approve(txId : int) = 
         onlyConfigured()
         onlyOwners()
-        require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.txConfirmations), "Your vote already submitted.")
+        require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.txConfirmations), "Your vote has been already submitted.")
 
         let transaction : transaction = state.transactions[txId]
 
@@ -149,7 +142,7 @@ contract MultiSigWallet =
     public stateful function addTransaction(method : string) : int = 
         onlyConfigured()
         onlyOwners()
-        // validate method !?
+        require(validateMethodName(method), "Invalid method name.")
 
         let tx : transaction = {
             id             = state.transactionsCount,
@@ -160,6 +153,12 @@ contract MultiSigWallet =
         put(state{transactionsCount = state.transactionsCount + 1})  
 
         tx.id
+
+    private function validateMethodName(method: string) : bool =
+        switch(method)
+            "Vote" => true
+            "Revoke" => true
+            _    => false
 
     private stateful function addNewOwner(owner : address) =
         require(owner != Contract.address, "Address can't be same as contract address")
@@ -233,37 +232,3 @@ contract MultiSigWallet =
         switch((currentRequire - 1) < 2)
             true => 2
             false => currentRequire - 1
-
-    // // ------------------------------------------------ helper methods --------------------------------------------
-    // public function getOwnersCount() : int =
-    //     state.ownersCount
-
-    // public function getOwnerIndex(_owner : address) : int =
-	// 	lookupByAddress(_owner, state.ownerIndex, 0)
-
-    // public function getAddressByIndex(index : int) : address =
-    //     switch(Map.lookup(index, state.owners))
-    //         None    => Contract.address
-    //         Some(x) => x
-        
-    // public function getOwner() : address =
-    //     state.owner
-
-    // public function isCurrentOwnerVoteForNewOwner(newOwner : address) : bool =
-    //     getValueFromMapTuple(newOwner, Call.caller, state.addOwnerConfirmations)
-
-    // public function getRequired() : int =
-    //     state.required
-
-    // public function getVotes(addr: address) : int =
-    //     //getValueAddressInt(addr, state.addOwner)
-    //     //state.required
-    //     //getValueAddressInt(addr, state.addOwner) == (state.required - 1)
-    //     getValueAddressInt(addr, state.removeOwner)
-    //     //state.transactions[addr]
-    //     //switch(Map.lookup(index, state.transactions))
-    //         //None    => Contract.address
-    //         //Some(x) => x
-
-
-
