@@ -253,7 +253,8 @@ describe('ERC20', () => {
 			})
 
 			describe('Transfer', () => {
-				it.only('should transfer token successfully', async () => {
+				//TODO: When updated and fixed in sdk, check if this test is passing
+				it('should transfer token successfully', async () => {
 					//Arrange
 					const expectedBalanceOfNotOwner = 10;
 					const expectedBalanceOfOwner = 990;
