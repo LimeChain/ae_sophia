@@ -14,10 +14,22 @@ contract CryptoHamster =
           nameHamster = {}}
 
     public function createHamster(hamsterName: string) =
-        require(isNameExist(hamsterName), "Name is already taken")
+        require(!isNameExist(hamsterName), "Name is already taken")
 
         // let randDna = generateRandomDNA(name)
         createHamsterByNameDNA(hamsterName, generateRandomDNA())
+
+    public function isNameExist(name: string) : bool =
+        switch(Map.lookup(name, state.nameHamster))
+            None    => false
+            Some(x) => true
+
+    public function getHamsterDNA(_name: string) : int =
+        require(isNameExist(_name), "There is no hamster with that name!")
+
+        let neededHamster : hamster = state.nameHamster[_name]
+
+        neededHamster.dna
 
     private function createHamsterByNameDNA(_name: string, _dna: int) =
         // I need smth like this: uint id = hamsters.push(Hamster(_name, _dna)) - 1;
@@ -34,12 +46,6 @@ contract CryptoHamster =
     private function generateRandomDNA() : int =
         // I want to create a hash of the input str like: let rand = int(str_hash))
         Chain.block_hash(Chain.block_height - 1) - Chain.timestamp
-
-
-    private function isNameExist(name: string) : bool =
-        switch(Map.lookup(name, state.nameHamster))
-            None    => false
-            Some(x) => true
 
     private function require(expression : bool, err : string) =
         if(!expression) 
