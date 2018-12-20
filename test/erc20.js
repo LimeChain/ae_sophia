@@ -18,31 +18,22 @@ describe('ERC20', () => {
 		firstClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.ownerKeyPair
+			keypair: config.ownerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
 		secondClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.notOwnerKeyPair
+			keypair: config.notOwnerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
-		const {
-			tx
-		} = await firstClient.api.postSpend({
-			fee: 1,
-			amount: 1111111,
-			senderId: config.ownerKeyPair.publicKey,
-			recipientId: config.notOwnerKeyPair.publicKey,
-			payload: '',
-			ttl: config.ttl
-		})
 
-		const signed = await firstClient.signTransaction(tx)
-		await firstClient.api.postTransaction({
-			tx: signed
-		})
-
+		firstClient.setKeypair(config.ownerKeyPair)
+		await firstClient.spend(1, config.notOwnerKeyPair.publicKey)
 		erc20Source = utils.readFileRelative(sourceFile, config.filesEncoding);
 	})
 
@@ -50,15 +41,12 @@ describe('ERC20', () => {
 
 		it('deploying successfully', async () => {
 			//Arrange
-			const compiledContract = await firstClient.contractCompile(erc20Source, {
-				gas: config.gas
-			})
+			const compiledContract = await firstClient.contractCompile(erc20Source, {})
 
 			//Act
 			const deployPromise = compiledContract.deploy({
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
@@ -67,7 +55,6 @@ describe('ERC20', () => {
 
 			//Assert
 			const deployedContract = await deployPromise;
-			console.log(deployedContract);
 			assert.equal(config.ownerKeyPair.publicKey, deployedContract.owner)
 		})
 
@@ -78,13 +65,10 @@ describe('ERC20', () => {
 		let compiledContract;
 
 		beforeEach(async () => {
-			compiledContract = await firstClient.contractCompile(erc20Source, {
-				gas: config.gas
-			})
+			compiledContract = await firstClient.contractCompile(erc20Source, {})
 			deployedContract = await compiledContract.deploy({
 				options: {
-					ttl: config.ttl,
-					gas: config.gas
+					ttl: config.ttl
 				},
 				abi: "sophia"
 			});
@@ -95,8 +79,7 @@ describe('ERC20', () => {
 				const mintPromise = deployedContract.call('mint', {
 					args: `(${config.pubKeyHex}, 1000)`,
 					options: {
-						ttl: config.ttl,
-						gas: config.gas
+						ttl: config.ttl
 					},
 					abi: "sophia"
 				})
@@ -113,8 +96,7 @@ describe('ERC20', () => {
 					const balanceOfPromise = deployedContract.call('balanceOf', {
 						args: `(${config.pubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
@@ -129,8 +111,7 @@ describe('ERC20', () => {
 					const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "mint", {
 						args: `(${config.pubKeyHex}, 123)`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					})
 					assert.isRejected(unauthorisedPromise, 'Unauthorized mint call');
@@ -145,8 +126,7 @@ describe('ERC20', () => {
 					const deployContractPromise1 = deployedContract.call('mint', {
 						args: `(${config.pubKeyHex}, 1)`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						},
 						abi: "sophia"
 					})
@@ -156,8 +136,7 @@ describe('ERC20', () => {
 					const deployContractPromise2 = deployedContract.call('mint', {
 						args: `(${config.pubKeyHex}, 1)`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						},
 						abi: "sophia"
 					})
@@ -167,8 +146,7 @@ describe('ERC20', () => {
 					const deployContractPromise3 = deployedContract.call('mint', {
 						args: `(${config.pubKeyHex}, 1)`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						},
 						abi: "sophia"
 					})
@@ -177,8 +155,7 @@ describe('ERC20', () => {
 
 					const totalSupplyPromise = deployedContract.call('totalSupply', {
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(totalSupplyPromise, 'Could not call totalSupply');
@@ -201,8 +178,7 @@ describe('ERC20', () => {
 					const ownerOfPromise = deployedContract.call('burn', {
 						args: `(${burnAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(ownerOfPromise, 'Could not call ownerOf');
@@ -211,8 +187,7 @@ describe('ERC20', () => {
 					const balanceOfPromise = deployedContract.call('balanceOf', {
 						args: `(${config.pubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
@@ -231,8 +206,7 @@ describe('ERC20', () => {
 					const unauthorizedBurnPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "burn", {
 						args: `(${burnAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					})
 
@@ -249,8 +223,7 @@ describe('ERC20', () => {
 					const ownerOfPromise1 = deployedContract.call('burn', {
 						args: `(${burnAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(ownerOfPromise1, 'Could not call ownerOf');
@@ -259,8 +232,7 @@ describe('ERC20', () => {
 					const ownerOfPromise2 = deployedContract.call('burn', {
 						args: `(${burnAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(ownerOfPromise2, 'Could not call ownerOf');
@@ -268,8 +240,7 @@ describe('ERC20', () => {
 
 					const balanceOfPromise = deployedContract.call('totalSupply', {
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(balanceOfPromise, 'Could not call balanceOf');
@@ -282,7 +253,7 @@ describe('ERC20', () => {
 			})
 
 			describe('Transfer', () => {
-				it('should transfer token successfully', async () => {
+				it.only('should transfer token successfully', async () => {
 					//Arrange
 					const expectedBalanceOfNotOwner = 10;
 					const expectedBalanceOfOwner = 990;
@@ -292,18 +263,18 @@ describe('ERC20', () => {
 					const approvePromise = deployedContract.call('approve', {
 						args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							blocks: 30
 						}
 					});
+
 					assert.isFulfilled(approvePromise, 'Could not call approve');
 					const approveResult = await approvePromise;
+					console.log(approveResult)
 
 					const transferFromPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", {
 						args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${transferAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							blocks: 50
 						}
 					})
 					assert.isFulfilled(transferFromPromise, 'Could not call transferFrom');
@@ -314,8 +285,7 @@ describe('ERC20', () => {
 					const balanceOfNotOwnerPromise = deployedContract.call('balanceOf', {
 						args: `(${config.notOwnerPubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							blocks: 50
 						}
 					});
 					assert.isFulfilled(balanceOfNotOwnerPromise, 'Could not call balanceOf');
@@ -324,8 +294,7 @@ describe('ERC20', () => {
 					const balanceOwnerPromise = deployedContract.call('balanceOf', {
 						args: `(${config.pubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							blocks: 50
 						}
 					});
 					assert.isFulfilled(balanceOwnerPromise, 'Could not call balanceOf');
@@ -349,8 +318,7 @@ describe('ERC20', () => {
 					const transferFromPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", {
 						args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${transferAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					})
 					assert.isRejected(transferFromPromise, 'Invocation failed');
@@ -358,8 +326,7 @@ describe('ERC20', () => {
 					const balanceOfNotOwnerPromise = deployedContract.call('balanceOf', {
 						args: `(${config.notOwnerPubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(balanceOfNotOwnerPromise, 'Could not call balanceOf');
@@ -368,8 +335,7 @@ describe('ERC20', () => {
 					const balanceOwnerPromise = deployedContract.call('balanceOf', {
 						args: `(${config.pubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(balanceOwnerPromise, 'Could not call balanceOf');
@@ -394,8 +360,7 @@ describe('ERC20', () => {
 					const approvePromise = deployedContract.call('approve', {
 						args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(approvePromise, 'Could not call approve');
@@ -404,8 +369,7 @@ describe('ERC20', () => {
 					const increaseAllowancePromise = deployedContract.call('increaseAllowance', {
 						args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(increaseAllowancePromise, 'Could not call approve');
@@ -414,8 +378,7 @@ describe('ERC20', () => {
 					const allowancePromise = deployedContract.call('allowance', {
 						args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(allowancePromise, 'Could not call approve');
@@ -437,8 +400,7 @@ describe('ERC20', () => {
 					const approvePromise = deployedContract.call('approve', {
 						args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(approvePromise, 'Could not call approve');
@@ -447,8 +409,7 @@ describe('ERC20', () => {
 					const decreaseAllowancePromise = deployedContract.call('decreaseAllowance', {
 						args: `(${config.notOwnerPubKeyHex}, ${decreaseAmount})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(decreaseAllowancePromise, 'Could not call approve');
@@ -457,8 +418,7 @@ describe('ERC20', () => {
 					const allowancePromise = deployedContract.call('allowance', {
 						args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex})`,
 						options: {
-							ttl: config.ttl,
-							gas: config.gas
+							ttl: config.ttl
 						}
 					});
 					assert.isFulfilled(allowancePromise, 'Could not call approve');
