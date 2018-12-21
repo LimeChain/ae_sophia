@@ -29,9 +29,8 @@ contract MultiSigWallet =
         Revoke | 
         Result
           
-    public stateful function init(required : int) = 
-        require(required >= 2, "'Required' should be equal or greater than 2!")
-        { required                 = required,
+    public stateful function init() = 
+        { required                 = 1,
           owner                    = Call.caller,
           configured               = false,
           ownersCount              = 0,
@@ -53,6 +52,7 @@ contract MultiSigWallet =
 
     public stateful function configure() = 
         onlyOwner()
+        require(state.required =< state.ownersCount, "'Required' should be lower than owners count!")
 
         put(state{configured = true})
 
@@ -78,7 +78,7 @@ contract MultiSigWallet =
         onlyConfigured()
         onlyOwners()
 
-        require(getValueAddressInt(_owner, state.addOwner) >= (state.required - 1), "Not enough votes!")
+        require(getValueAddressInt(_owner, state.addOwner) >= state.required, "Not enough votes!")
 
         addNewOwner(_owner)
 
@@ -88,9 +88,8 @@ contract MultiSigWallet =
     public stateful function removeOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
-        require(getValueAddressInt(owner, state.removeOwner) >= (state.required - 1), "Not enough votes!")
+        require(getValueAddressInt(owner, state.removeOwner) >= state.required, "Not enough votes!")
 
-        // !!! - who can remove owner, voter or not
         // require(state.removeOwnerConfirmations[owner][Call.caller] == false, "") // turn me ON
 
         let ownerId = state.ownerIndex[owner]
@@ -116,7 +115,7 @@ contract MultiSigWallet =
         validRequirement()
 
         let transaction : transaction = state.transactions[txId]
-        require(transaction.confirmations >= (state.required - 1), "Not enough votes!")
+        require(transaction.confirmations >= state.required, "Not enough votes!")
         
         switch(transaction.method)
             "Vote"   => v.vote()
@@ -229,6 +228,6 @@ contract MultiSigWallet =
             Some(x) => true
 
     private function calculateMinimumRequired(currentRequire) : int =
-        switch((currentRequire - 1) < 2)
-            true => 2
+        switch(currentRequire =< 1)
+            true => 1
             false => currentRequire - 1
