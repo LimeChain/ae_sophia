@@ -52,7 +52,7 @@ describe('MultiSig', () => {
 
 		before(async () => {
 			const sf = fs.readFileSync(sourceFile, 'utf8');
-			let deployInfo = await getDeployedContractInstance(Universal, config, sf, '(2)');
+			let deployInfo = await getDeployedContractInstance(Universal, config, sf);
 			multiSigInstance = deployInfo.deployedContract;
 		})
 
@@ -116,7 +116,7 @@ describe('MultiSig', () => {
 		let deployInfo;
 		before(async () => {
 			const sf = fs.readFileSync(sourceFile, 'utf8');
-			deployInfo = await getDeployedContractInstance(Universal, config, sf, '(2)');
+			deployInfo = await getDeployedContractInstance(Universal, config, sf);
 			deployedContractInstance = deployInfo.deployedContract;
 		})
 
@@ -159,7 +159,7 @@ describe('MultiSig', () => {
 
 		beforeEach(async () => {
 			const sf = fs.readFileSync(sourceFile, 'utf8');
-			const deployInfo = await getDeployedContractInstance(Universal, config, sf, '(2)');
+			const deployInfo = await getDeployedContractInstance(Universal, config, sf);
 			deployedContractInstance = deployInfo.deployedContract;
 
 			// create second/another client configuration
