@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const Crypto = require('@aeternity/aepp-sdk').Crypto;
 
 const readFile = (path, encoding = null, errTitle = 'READ FILE ERR') => {
 	try {
@@ -52,8 +53,109 @@ const fileExists = (relativePath) => {
 	return fs.existsSync(path.resolve(process.cwd(), relativePath));
 }
 
-const trimAdresseses = (addressToTrim) => {
+const trimAddresses = (addressToTrim) => {
 	return addressToTrim.substring(3)
+}
+
+// contract source should be => const contractSource = fs.readFileSync('./path/to/contract.aes', 'utf8');
+const getDeployedContractInstance = async function (Universal, clientConfig, contractSource, initState) {
+	client = await Universal({
+		url: clientConfig.host,
+		internalUrl: clientConfig.internalHost,
+		keypair: clientConfig.ownerKeyPair,
+		nativeMode: true,
+		networkId: "ae_devnet"
+	});
+
+	compiledContract = await client.contractCompile(contractSource, {
+		gas: clientConfig.gas
+	});
+	
+	let deployOptions = {
+		options: {
+			ttl: clientConfig.ttl,
+			//gas: clientConfig.gas
+		},
+		abi: "sophia"
+	}
+
+	if (initState) {
+		deployOptions.initState = initState;
+	}
+	
+	deployedContract = await compiledContract.deploy(deployOptions);
+
+	// printResultWithDelimiter(['Deployed Contract Info:', deployedContract])
+
+	let result = {
+		deployedContract,
+		compiledContract
+	}
+
+	return result;
+};
+
+// args that you pass, should be something like this => `("${INIT_CONTRACT_NAME}", ${INIT_AGE})`
+const executeSmartContractFunction = async function (deployedContract, functionName, args, ttl = 345345, gas = 9000000000) {
+	let configuration = {
+		options: {
+			ttl: ttl,
+			gas: gas
+		},
+		abi: "sophia"
+	};
+
+	if (args) {
+		configuration.args = args
+	}
+
+	let result = await deployedContract.call(functionName, configuration);
+
+	return result
+}
+
+const executeSmartContractFunctionFromAnotherClient = async function (clientConfiguration, functionName, args, ttl = 345345, gas = 9000000000) {
+
+	let configuration = {
+		options: {
+			ttl: ttl,
+			gas: gas
+		},
+		abi: "sophia"
+	};
+
+	if (args) {
+		configuration.args = args
+	}
+
+	let result = await clientConfiguration.client.contractCall(clientConfiguration.byteCode, 'sophia', clientConfiguration.contractAddress, functionName, configuration);
+
+	return result;
+}
+
+const getAEClient = async function (Ae, clientConfig, keyPair) {
+	let client = await Ae({
+		url: clientConfig.host,
+		internalUrl: clientConfig.internalHost,
+		keypair: keyPair,
+		nativeMode: true,
+		networkId: "ae_devnet"
+	});
+
+	return client;
+}
+
+function printResultWithDelimiter (array) {
+	const delimiter = '-'.repeat(80);
+    console.log(delimiter);
+    array.forEach(x => console.log(x));
+    console.log(delimiter);
+}
+
+function publicKeyToHex (publicKey) {
+	let byteArray = Crypto.decodeBase58Check(publicKey.split('_')[1]); // const Crypto = require('@aeternity/aepp-sdk').Crypto
+	let asHex = '0x' + byteArray.toString('hex');
+	return asHex;
 }
 
 module.exports = {
@@ -61,5 +163,10 @@ module.exports = {
 	readFileRelative,
 	writeFileRelative,
 	fileExists,
-	trimAdresseses
+	trimAddresses,
+	getDeployedContractInstance,
+	executeSmartContractFunction,
+	publicKeyToHex,
+	getAEClient,
+	executeSmartContractFunctionFromAnotherClient
 }

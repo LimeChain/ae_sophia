@@ -149,7 +149,7 @@ describe('ExchangeOracle', () => {
 		})
 
 		xit('should make a query from the market ', async () => {
-			let oraclePublicKey = utils.trimAdresseses(deployedOracleContract.address)
+			let oraclePublicKey = utils.trimAddresses(deployedOracleContract.address)
 			let fixedOraclePubKey = `ok_${oraclePublicKey}`
 			let string = "aePrice"
 
@@ -183,7 +183,7 @@ describe('ExchangeOracle', () => {
 		})
 
 		it("should get the query_fee", async () => {
-			let oraclePublicKey = utils.trimAdresseses(deployedOracleContract.address)
+			let oraclePublicKey = utils.trimAddresses(deployedOracleContract.address)
 			let fixedOraclePubKey = `ok_${oraclePublicKey}`
 			let fee = 5
 			let newTTl = 2000
