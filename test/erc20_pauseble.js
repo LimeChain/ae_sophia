@@ -6,7 +6,7 @@ const utils = require('./utils');
 const AeSDK = require('@aeternity/aepp-sdk');
 const Universal = AeSDK.Universal;
 const config = require("./config.json")
-const sourceFile =  "./contracts/erc20/erc20_pausable.aes"
+const sourceFile = "./contracts/erc20/erc20_pausable.aes"
 
 describe('ERC20 Pauseable', () => {
 
@@ -18,26 +18,21 @@ describe('ERC20 Pauseable', () => {
 		firstClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.ownerKeyPair
+			keypair: config.ownerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
 		secondClient = await Universal({
 			url: config.host,
 			internalUrl: config.internalHost,
-			keypair: config.notOwnerKeyPair
+			keypair: config.notOwnerKeyPair,
+			nativeMode: true,
+			networkId: 'ae_devnet'
 		});
 
-        const { tx } = await firstClient.api.postSpend({
-            fee: 1,
-            amount: 1111111,
-            senderId: config.ownerKeyPair.publicKey,
-            recipientId: config.notOwnerKeyPair.publicKey,
-            payload: '',
-            ttl: config.ttl
-        })
-
-        const signed = await firstClient.signTransaction(tx)
-        await firstClient.api.postTransaction({ tx: signed })
+		firstClient.setKeypair(config.ownerKeyPair)
+		await firstClient.spend(1, config.notOwnerKeyPair.publicKey)
 
 		erc20Source = utils.readFileRelative(sourceFile, config.filesEncoding);
 	})
@@ -46,10 +41,15 @@ describe('ERC20 Pauseable', () => {
 
 		it('deploying successfully', async () => {
 			//Arrange
-			const compiledContract = await firstClient.contractCompile(erc20Source, { gas: config.gas })
+			const compiledContract = await firstClient.contractCompile(erc20Source, {})
 
 			//Act
-			const deployPromise = compiledContract.deploy({options: { ttl: config.ttl, gas: config.gas}, abi: "sophia"});
+			const deployPromise = compiledContract.deploy({
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
 			assert.isFulfilled(deployPromise, 'Could not deploy the erc20');
 
 			//Assert
@@ -64,13 +64,24 @@ describe('ERC20 Pauseable', () => {
 		let compiledContract;
 
 		beforeEach(async () => {
-			compiledContract = await firstClient.contractCompile(erc20Source, { gas: config.gas })
-			deployedContract = await compiledContract.deploy({options: { ttl: config.ttl, gas: config.gas}, abi: "sophia"});
+			compiledContract = await firstClient.contractCompile(erc20Source, {})
+			deployedContract = await compiledContract.deploy({
+				options: {
+					ttl: config.ttl
+				},
+				abi: "sophia"
+			});
 		})
 
 		describe('Contract functionality', () => {
 			beforeEach(async () => {
-				const mintPromise = deployedContract.call('mint', { args: `(${config.pubKeyHex}, 1000)`, options: { ttl: config.ttl, gas: config.gas }, abi: "sophia"})
+				const mintPromise = deployedContract.call('mint', {
+					args: `(${config.pubKeyHex}, 1000)`,
+					options: {
+						ttl: config.ttl
+					},
+					abi: "sophia"
+				})
 				assert.isFulfilled(mintPromise, "Couldn't mint token");
 				await mintPromise;
 			})
@@ -81,11 +92,19 @@ describe('ERC20 Pauseable', () => {
 					const expectedValue = true;
 
 					//Act
-					const pausePromise = deployedContract.call('pause', { options: { ttl: config.ttl, gas: config.gas } });
+					const pausePromise = deployedContract.call('pause', {
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(pausePromise, 'Could not call pause');
 					await pausePromise;
 
-					const pausedPromise = deployedContract.call('paused', { options: { ttl: config.ttl, gas: config.gas } });
+					const pausedPromise = deployedContract.call('paused', {
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(pausedPromise, 'Could not call pause');
 					const pausedPromiseResult = await pausedPromise;
 
@@ -93,9 +112,13 @@ describe('ERC20 Pauseable', () => {
 					const pausedResult = await pausedPromiseResult.decode("bool");
 					assert.equal(pausedResult.value, expectedValue)
 				})
-	
+
 				it('should not pause contract from non-owner', async () => {
-					const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "pause", {options: { ttl: config.ttl, gas: config.gas } })
+					const unauthorisedPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "pause", {
+						options: {
+							ttl: config.ttl
+						}
+					})
 					assert.isRejected(unauthorisedPromise, 'Unauthorized pause call');
 				})
 
@@ -103,11 +126,21 @@ describe('ERC20 Pauseable', () => {
 					//Arrange
 
 					//Act
-					const pausePromise = deployedContract.call('pause', { options: { ttl: config.ttl, gas: config.gas } });
+					const pausePromise = deployedContract.call('pause', {
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(pausePromise, 'Could not call pause');
 					await pausePromise;
 
-					const mintPromise = deployedContract.call('mint', { args: `(${config.pubKeyHex}, 1)`, options: { ttl: config.ttl, gas: config.gas }, abi: "sophia"})
+					const mintPromise = deployedContract.call('mint', {
+						args: `(${config.pubKeyHex}, 1)`,
+						options: {
+							ttl: config.ttl
+						},
+						abi: "sophia"
+					})
 
 					//Assert
 					assert.isRejected(mintPromise, 'Invalid mint call');
@@ -115,14 +148,24 @@ describe('ERC20 Pauseable', () => {
 
 				it('shouldn`t burn when contract is paused', async () => {
 					//Arrange
-					const burnAmount = 100;
+					const burnAmount = 10;
 
 					//Act
-					const pausePromise = deployedContract.call('pause', { options: { ttl: config.ttl, gas: config.gas } });
+					const pausePromise = deployedContract.call('pause', {
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(pausePromise, 'Could not call pause');
 					await pausePromise;
 
-					const burnPromise = deployedContract.call('burn', { args: `(${burnAmount})`, options: { ttl: config.ttl, gas: config.gas }, abi: "sophia"})
+					const burnPromise = deployedContract.call('burn', {
+						args: `(${burnAmount})`,
+						options: {
+							ttl: config.ttl
+						},
+						abi: "sophia"
+					})
 
 					//Assert
 					assert.isRejected(burnPromise, 'Invalid burn call');
@@ -133,11 +176,20 @@ describe('ERC20 Pauseable', () => {
 					const transferAmount = 10;
 
 					//Act
-					const pausePromise = deployedContract.call('pause', { options: { ttl: config.ttl, gas: config.gas } });
+					const pausePromise = deployedContract.call('pause', {
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(pausePromise, 'Could not call pause');
 					await pausePromise;
 
-					const approvePromise = deployedContract.call('approve', { args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`, options: { ttl: config.ttl, gas: config.gas } });
+					const approvePromise = deployedContract.call('approve', {
+						args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`,
+						options: {
+							ttl: config.ttl
+						}
+					});
 
 					//Assert
 					assert.isRejected(approvePromise, 'Invalid approve call');
@@ -148,15 +200,29 @@ describe('ERC20 Pauseable', () => {
 					const transferAmount = 10;
 
 					//Act
-					const approvePromise = deployedContract.call('approve', { args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`, options: { ttl: config.ttl, gas: config.gas } });
+					const approvePromise = deployedContract.call('approve', {
+						args: `(${config.notOwnerPubKeyHex}, ${transferAmount})`,
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(approvePromise, 'Could not call approve');
 					const approveResult = await approvePromise;
 
-					const pausePromise = deployedContract.call('pause', { options: { ttl: config.ttl, gas: config.gas } });
+					const pausePromise = deployedContract.call('pause', {
+						options: {
+							ttl: config.ttl
+						}
+					});
 					assert.isFulfilled(pausePromise, 'Could not call pause');
 					await pausePromise;
 
-					const transferFromPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", { args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${transferAmount})`, options: { ttl: config.ttl, gas: config.gas } })
+					const transferFromPromise = secondClient.contractCall(compiledContract.bytecode, 'sophia', deployedContract.address, "transferFrom", {
+						args: `(${config.pubKeyHex}, ${config.notOwnerPubKeyHex}, ${transferAmount})`,
+						options: {
+							ttl: config.ttl
+						}
+					})
 
 					//Assert
 					assert.isRejected(transferFromPromise, 'Invalid approve call');
