@@ -13,8 +13,8 @@ contract MultiSigWallet =
         owners                   : map(int, address),
         transactions             : map(int, transaction),
         ownerIndex               : map(address, int),
-        removeOwner              : map(address, int), // received votes
-        addOwner                 : map(address, int), // received votes
+        removeOwnerVotes         : map(address, int),
+        addOwnerVotes                 : map(address, int),
         removeOwnerConfirmations : map((address,address), bool), // map(address, map(address, bool)),
         addOwnerConfirmations    : map((address,address), bool), // map((address,address), int) newOwner | currentOwner | true/false
         txConfirmations          : map((int,address), bool)} // map(int, map(address, bool))
@@ -38,8 +38,8 @@ contract MultiSigWallet =
           owners                   = {},
           ownerIndex               = {},
           transactions             = {},
-          removeOwner              = {},
-          addOwner                 = {},
+          removeOwnerVotes              = {},
+          addOwnerVotes                 = {},
           txConfirmations          = {},
           addOwnerConfirmations    = {},
           removeOwnerConfirmations = {}}
@@ -56,14 +56,21 @@ contract MultiSigWallet =
 
         put(state{configured = true})
 
+    //public stateful function changeRequiments() =
+            
+
     public stateful function voteAddOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
         require(!getValueFromMapTuple(owner, Call.caller, state.addOwnerConfirmations), "Your vote has been already submitted.")
         
-        put(state{addOwner[owner] = getValueAddressInt(owner, state.addOwner) + 1})
+        put(state{addOwnerVotes[owner] = getValueAddressInt(owner, state.addOwnerVotes) + 1})
 
         put(state{addOwnerConfirmations[(owner,Call.caller)] = true}) // set this value to true because current owner make a vote 
+
+        if(getValueAddressInt(owner, state.addOwnerVotes) >= state.required)
+            addNewOwner(owner)
+            
 
     public stateful function voteRemoveOwner(owner : address) =
         onlyConfigured()
@@ -71,24 +78,24 @@ contract MultiSigWallet =
         require(isOwnerExists(owner), "Address is not an owner!")
         require(!getValueFromMapTuple(owner, Call.caller, state.removeOwnerConfirmations), "Your vote has been already submitted.")
         
-        put(state{removeOwner[owner] = getValueAddressInt(owner, state.removeOwner) + 1})
+        put(state{removeOwnerVotes[owner] = getValueAddressInt(owner, state.removeOwnerVotes) + 1})
         put(state{removeOwnerConfirmations[(owner,Call.caller)] = true})
 
-    public stateful function addOwner(_owner : address, incrementRequired : bool) = 
+        if(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required)
+            removeOwner(owner)
+
+    // public stateful function addOwner(_owner : address) = 
+    //     onlyConfigured()
+    //     onlyOwners()
+
+    //     require(getValueAddressInt(_owner, state.addOwnerVotes) >= state.required, "Not enough votes!")
+
+    //     addNewOwner(_owner) 
+
+    private stateful function removeOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
-
-        require(getValueAddressInt(_owner, state.addOwner) >= state.required, "Not enough votes!")
-
-        addNewOwner(_owner)
-
-        if(incrementRequired)
-            put(state{required = state.required + 1})    
-
-    public stateful function removeOwner(owner : address) =
-        onlyConfigured()
-        onlyOwners()
-        require(getValueAddressInt(owner, state.removeOwner) >= state.required, "Not enough votes!")
+        require(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required, "Not enough votes!")
 
         // require(state.removeOwnerConfirmations[owner][Call.caller] == false, "") // turn me ON
 
@@ -96,9 +103,9 @@ contract MultiSigWallet =
 
         // Map.delete is not working correctly
         put(state{ownerIndex[owner] = 0})
-        put(state{removeOwner[owner] = 0})
+        put(state{removeOwnerVotes[owner] = 0})
 
-        Map.delete(owner, state.removeOwner)
+        Map.delete(owner, state.removeOwnerVotes)
         Map.delete(owner, state.ownerIndex)
         Map.delete(ownerId, state.owners)
         put(state{ownersCount = state.ownersCount - 1})    
@@ -162,7 +169,7 @@ contract MultiSigWallet =
     private stateful function addNewOwner(owner : address) =
         require(owner != Contract.address, "Address can't be same as contract address")
           
-        put(state{addOwner[owner] = 0})
+        put(state{addOwnerVotes[owner] = 0})
         put(state{ownersCount = state.ownersCount + 1})    
         put(state{owners = state.owners{[state.ownersCount] = owner}})
         put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}}) 
