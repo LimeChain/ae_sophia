@@ -2,7 +2,7 @@ contract CryptoHamster =
 
     record state = {
         index : int,
-        nameHamster : map(string, hamster)}
+        hamsters : map(string, hamster)}
 
     record hamster = {
         id: int,
@@ -11,23 +11,23 @@ contract CryptoHamster =
 
     public stateful function init() = 
         { index = 1,
-          nameHamster = {}}
+          hamsters = {}}
 
     public function createHamster(hamsterName: string) =
-        require(!isNameExist(hamsterName), "Name is already taken")
+        require(!nameExists(hamsterName), "Name is already taken")
 
         // let randDna = generateRandomDNA(name)
         createHamsterByNameDNA(hamsterName, generateRandomDNA())
 
-    public function isNameExist(name: string) : bool =
-        switch(Map.lookup(name, state.nameHamster))
+    public function nameExists(name: string) : bool =
+        switch(Map.lookup(name, state.hamsters))
             None    => false
             Some(x) => true
 
     public function getHamsterDNA(_name: string) : int =
-        require(isNameExist(_name), "There is no hamster with that name!")
+        require(nameExists(_name), "There is no hamster with that name!")
 
-        let neededHamster : hamster = state.nameHamster[_name]
+        let neededHamster : hamster = state.hamsters[_name]
 
         neededHamster.dna
 
@@ -40,44 +40,13 @@ contract CryptoHamster =
             name = _name,
             dna = _dna}
 
-        put(state{nameHamster[_name] = newHamster})
+        put(state{hamsters[_name] = newHamster})
         put(state{index = (state.index + 1)})
 
     private function generateRandomDNA() : int =
         // I want to create a hash of the input str like: let rand = int(str_hash))
-        Chain.block_hash(Chain.block_height - 1) - Chain.timestamp
+        Chain.block_hash(Chain.block_height - 1) - Chain.timestamp + state.index
 
     private function require(expression : bool, err : string) =
         if(!expression) 
             abort(err)
-
-// pragma solidity ^0.4.25;
-// contract CryptoHamster {
-
-//     event NewHamster(uint hamsterId, string name, uint dna);
-
-//     uint dnaDigits = 16;
-//     uint dnaModulus = 10 ** dnaDigits;
-
-//     struct Hamster {
-//         string name;
-//         uint dna;
-//     }
-
-//     Hamster[] public hamsters;
-
-//     function _createHamster(string _name, uint _dna) private {
-//         uint id = hamsters.push(Hamster(_name, _dna)) - 1;
-//         emit NewHamster(id, _name, _dna);
-//     }
-
-//     function _generateRandomDna(string _str) private returns (uint) {
-//         uint rand = uint(keccak256(abi.encodePacked(_str)));
-//         return rand % dnaModulus;
-//     }
-
-//     function createRandomHamster(string _name) public {
-//         uint randDna = _generateRandomDna(_name);
-//         _createHamster(_name, randDna);
-//     }
-// }
