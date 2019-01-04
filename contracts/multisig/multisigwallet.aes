@@ -11,12 +11,14 @@ contract MultiSigWallet =
         transactionsCount        : int,
         required                 : int,
         owners                   : map(int, address),
-        transactions             : map(int, transaction),
         ownerIndex               : map(address, int),
+        transactions             : map(int, transaction),
         removeOwnerVotes         : map(address, int),
         addOwnerVotes                 : map(address, int),
         removeOwnerConfirmations : map((address,address), bool), // map(address, map(address, bool)),
         addOwnerConfirmations    : map((address,address), bool), // map((address,address), int) newOwner | currentOwner | true/false
+        changeRequirementVotes : map((int,address), bool), // map((new_required, owner_address), vote_decision)
+        changeRequirementConfirmations : map(int, int), // map(new_required, current_positive_votes)
         txConfirmations          : map((int,address), bool)} // map(int, map(address, bool))
     
     record transaction = { 
@@ -42,7 +44,9 @@ contract MultiSigWallet =
           addOwnerVotes                 = {},
           txConfirmations          = {},
           addOwnerConfirmations    = {},
-          removeOwnerConfirmations = {}}
+          removeOwnerConfirmations = {},
+          changeRequirementVotes = {},
+          changeRequirementConfirmations = {}}
 
     public stateful function initOwner(owner : address) = 
         onlyOwner()
@@ -56,8 +60,21 @@ contract MultiSigWallet =
 
         put(state{configured = true})
 
-    //public stateful function changeRequiments() =
-            
+    public stateful function voteChangeRequirement(_newRequired: int, _vote: bool) =
+        onlyOwners()
+        // validate requirements
+        validateRequirement(_newRequired, state.ownersCount)
+        // is caller already voted
+        require(!isOwnerVotedForRequirement(_newRequired, Call.caller), "Your vote has been already submitted.")
+
+        put(state{changeRequirementVotes[(_newRequired, Call.caller)] = true})
+        if(_vote)
+            put(state{changeRequirementConfirmations[_newRequired] = state.changeRequirementConfirmations[_newRequired] + 1})
+
+        if(state.changeRequirementConfirmations[_newRequired] >= state.required)
+            put(state{changeRequirementConfirmations[_newRequired] = 0})
+            put(state{required = _newRequired})
+            reInitRequirementVote(_newRequired, 1, state.ownersCount)
 
     public stateful function voteAddOwner(owner : address) =
         onlyConfigured()
@@ -70,6 +87,14 @@ contract MultiSigWallet =
 
         if(getValueAddressInt(owner, state.addOwnerVotes) >= state.required)
             addNewOwner(owner)
+
+    // public stateful function addOwner(_owner : address) = 
+    //     onlyConfigured()
+    //     onlyOwners()
+
+    //     require(getValueAddressInt(_owner, state.addOwnerVotes) >= state.required, "Not enough votes!")
+
+    //     addNewOwner(_owner) 
             
 
     public stateful function voteRemoveOwner(owner : address) =
@@ -84,32 +109,28 @@ contract MultiSigWallet =
         if(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required)
             removeOwner(owner)
 
-    // public stateful function addOwner(_owner : address) = 
-    //     onlyConfigured()
-    //     onlyOwners()
-
-    //     require(getValueAddressInt(_owner, state.addOwnerVotes) >= state.required, "Not enough votes!")
-
-    //     addNewOwner(_owner) 
-
     private stateful function removeOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
         require(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required, "Not enough votes!")
+        require(!state.removeOwnerConfirmations[owner][Call.caller], "Your vote has been already submitted.")
 
-        // require(state.removeOwnerConfirmations[owner][Call.caller] == false, "") // turn me ON
-
-        let ownerId = state.ownerIndex[owner]
+        // swap last owner with deleted one
+        let _ownerIndex = state.ownerIndex[owner]
+        let lastAddedOwner = state.owners[state.ownersCount];
+        put(state{ownerIndex[lastAddedOwner] = _ownerIndex})
 
         // Map.delete is not working correctly
-        put(state{ownerIndex[owner] = 0})
+        put(state{ownerIndex[owner] = 0}) // del me
         put(state{removeOwnerVotes[owner] = 0})
 
         Map.delete(owner, state.removeOwnerVotes)
         Map.delete(owner, state.ownerIndex)
-        Map.delete(ownerId, state.owners)
+        Map.delete(_ownerIndex, state.owners)
         put(state{ownersCount = state.ownersCount - 1})    
         put(state{required = calculateMinimumRequired(state.required)})
+
+        reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.removeOwnerConfirmations)
 
     public function getConfirmations(txId : int) : int =
         onlyConfigured()
@@ -172,7 +193,9 @@ contract MultiSigWallet =
         put(state{addOwnerVotes[owner] = 0})
         put(state{ownersCount = state.ownersCount + 1})    
         put(state{owners = state.owners{[state.ownersCount] = owner}})
-        put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}}) 
+        put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}})
+
+        reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.addOwnerConfirmations)
 
     private function onlyOwner() =
         require(Call.caller == state.owner, "Only owner")
@@ -238,3 +261,35 @@ contract MultiSigWallet =
         switch(currentRequire =< 1)
             true => 1
             false => currentRequire - 1
+
+    private function validateRequirement(_required: int, ownerCount: int) =
+        require(_required =< ownerCount && _required > 0 && ownerCount > 0, "Invalid requirements!")
+    
+    private function isOwnerVotedForRequirement(_newRequired: int, _voter : address) : bool = 
+        switch(Map.lookup((_newRequired, _voter), state.changeRequirementVotes))
+            None    => false
+            Some(x) => true
+
+    private function reInitRequirementVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
+        if(currentOwnerIndex =< maxIndex)
+            put(state{changeRequirementVotes[(_required, state.owners[currentOwnerIndex])] = false})
+            Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
+            reInitRequirementVote(_required, currentOwnerIndex + 1, maxIndex)
+
+    private function reInitAddRemoveOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int, _map ) = 
+        if(currentOwnerIndex =< maxIndex)
+            put(state{_map[(_owner, _map[currentOwnerIndex])] = false})
+            Map.delete((_owner, state.owners[currentOwnerIndex]), _map)
+            reInitAddRemoveOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex, _map)
+
+    //private function reInitRemoveOwnerVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
+    //    if(currentOwnerIndex =< maxIndex)
+    //        put(state{changeRequirementVotes[(_required, state.owners[currentOwnerIndex])] = false})
+    //        Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
+    //        reInitRemoveOwnerVote(_required, currentOwnerIndex + 1, maxIndex)
+
+    //private function reInitApproveTxVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
+    //    if(currentOwnerIndex =< maxIndex)
+    //        put(state{changeRequirementVotes[(_required, state.owners[currentOwnerIndex])] = false})
+    //        Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
+    //        reInitApproveTxVote(_required, currentOwnerIndex + 1, maxIndex)
