@@ -113,12 +113,13 @@ contract MultiSigWallet =
         onlyConfigured()
         onlyOwners()
         require(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required, "Not enough votes!")
-        require(!state.removeOwnerConfirmations[owner][Call.caller], "Your vote has been already submitted.")
+        require(!state.removeOwnerConfirmations[(owner, Call.caller)], "Your vote has been already submitted.")
 
         // swap last owner with deleted one
         let _ownerIndex = state.ownerIndex[owner]
-        let lastAddedOwner = state.owners[state.ownersCount];
+        let lastAddedOwner = state.owners[state.ownersCount]
         put(state{ownerIndex[lastAddedOwner] = _ownerIndex})
+        put(state{owners[_ownerIndex] = lastAddedOwner})
 
         // Map.delete is not working correctly
         put(state{ownerIndex[owner] = 0}) // del me
@@ -126,11 +127,12 @@ contract MultiSigWallet =
 
         Map.delete(owner, state.removeOwnerVotes)
         Map.delete(owner, state.ownerIndex)
-        Map.delete(_ownerIndex, state.owners)
+        // Map.delete(_ownerIndex, state.owners) // after swat this operation is not needed
         put(state{ownersCount = state.ownersCount - 1})    
         put(state{required = calculateMinimumRequired(state.required)})
 
-        reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.removeOwnerConfirmations)
+        //reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.removeOwnerConfirmations)
+        //reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.removeOwnerConfirmations)
 
     public function getConfirmations(txId : int) : int =
         onlyConfigured()
@@ -195,7 +197,7 @@ contract MultiSigWallet =
         put(state{owners = state.owners{[state.ownersCount] = owner}})
         put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}})
 
-        reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.addOwnerConfirmations)
+        reInitAddOwnerVote(owner, 1, state.ownersCount)
 
     private function onlyOwner() =
         require(Call.caller == state.owner, "Only owner")
@@ -276,11 +278,17 @@ contract MultiSigWallet =
             Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
             reInitRequirementVote(_required, currentOwnerIndex + 1, maxIndex)
 
-    private function reInitAddRemoveOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int, _map ) = 
-        if(currentOwnerIndex =< maxIndex)
-            put(state{_map[(_owner, _map[currentOwnerIndex])] = false})
-            Map.delete((_owner, state.owners[currentOwnerIndex]), _map)
-            reInitAddRemoveOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex, _map)
+    private function reInitAddOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int) = 
+        if(_currentOwnerIndex =< maxIndex)
+            put(state{addOwnerConfirmations[(_owner, state.owners[_currentOwnerIndex])] = false})
+            // Map.delete((_owner, state.owners[_currentOwnerIndex]), _map)
+            reInitAddOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
+
+    private function reInitRemoveOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int) = 
+        if(_currentOwnerIndex =< maxIndex)
+            put(state{removeOwnerConfirmations[(_owner, state.owners[_currentOwnerIndex])] = false})
+            // Map.delete((_owner, state.owners[_currentOwnerIndex]), _map)
+            reInitAddRemoveOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
 
     //private function reInitRemoveOwnerVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
     //    if(currentOwnerIndex =< maxIndex)
