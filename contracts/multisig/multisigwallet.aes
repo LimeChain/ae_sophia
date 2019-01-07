@@ -131,15 +131,14 @@ contract MultiSigWallet =
         put(state{ownersCount = state.ownersCount - 1})    
         put(state{required = calculateMinimumRequired(state.required)})
 
-        //reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.removeOwnerConfirmations)
-        //reInitAddRemoveOwnerVote(owner, 1, state.ownersCount, state.removeOwnerConfirmations)
+        reInitRemoveOwnerVote(owner, 1, state.ownersCount)
 
     public function getConfirmations(txId : int) : int =
         onlyConfigured()
 
         state.transactions[txId].confirmations
 
-    public stateful function executeTransaction(txId : int, v : Voting) : bool = 
+    private stateful function executeTransaction(txId : int, v : Voting) : bool = 
         onlyConfigured()
         onlyOwners()
         validRequirement()
@@ -151,9 +150,17 @@ contract MultiSigWallet =
             "Vote"   => v.vote()
             "Revoke" => v.revoke()
 
+        let transaction' = transaction { 
+            id = transaction.id, 
+            confirmations = 0, 
+            method = transaction.method }
+    
+        put(state{transactions = state.transactions{[txId] = transaction'}})
+
+        reInitApproveTxVote(txId, 1, state.ownersCount)
         true
 
-    public stateful function approve(txId : int) = 
+    public stateful function approve(txId : int) = // pass contract address
         onlyConfigured()
         onlyOwners()
         require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.txConfirmations), "Your vote has been already submitted.")
@@ -167,6 +174,8 @@ contract MultiSigWallet =
 
         put(state{txConfirmations[(txId,Call.caller)] = true})
         put(state{transactions = state.transactions{[txId] = transaction'}})
+
+        // if there are votes execute tx
 
     public stateful function addTransaction(method : string) : int = 
         onlyConfigured()
@@ -281,23 +290,17 @@ contract MultiSigWallet =
     private function reInitAddOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int) = 
         if(_currentOwnerIndex =< maxIndex)
             put(state{addOwnerConfirmations[(_owner, state.owners[_currentOwnerIndex])] = false})
-            // Map.delete((_owner, state.owners[_currentOwnerIndex]), _map)
+            Map.delete((_owner, state.owners[_currentOwnerIndex]), state.addOwnerConfirmations)
             reInitAddOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
 
     private function reInitRemoveOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int) = 
         if(_currentOwnerIndex =< maxIndex)
             put(state{removeOwnerConfirmations[(_owner, state.owners[_currentOwnerIndex])] = false})
-            // Map.delete((_owner, state.owners[_currentOwnerIndex]), _map)
-            reInitAddRemoveOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
+            Map.delete((_owner, state.owners[_currentOwnerIndex]), state.removeOwnerConfirmations)
+            reInitRemoveOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
 
-    //private function reInitRemoveOwnerVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
-    //    if(currentOwnerIndex =< maxIndex)
-    //        put(state{changeRequirementVotes[(_required, state.owners[currentOwnerIndex])] = false})
-    //        Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
-    //        reInitRemoveOwnerVote(_required, currentOwnerIndex + 1, maxIndex)
-
-    //private function reInitApproveTxVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
-    //    if(currentOwnerIndex =< maxIndex)
-    //        put(state{changeRequirementVotes[(_required, state.owners[currentOwnerIndex])] = false})
-    //        Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
-    //        reInitApproveTxVote(_required, currentOwnerIndex + 1, maxIndex)
+    private function reInitApproveTxVote(_txId : int, currentOwnerIndex : int, maxIndex : int ) = 
+        if(currentOwnerIndex =< maxIndex)
+            put(state{txConfirmations[(_txId,state.owners[currentOwnerIndex])] = false})
+            Map.delete((_txId, state.owners[currentOwnerIndex]), state.txConfirmations)
+            reInitApproveTxVote(_txId, currentOwnerIndex + 1, maxIndex)
