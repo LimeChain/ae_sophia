@@ -12,6 +12,6 @@
 	"notOwnerPubKeyHex": "0xdf473b854e8d78394c20abfcb8fda9d0ed5dff8703d8668dccda9be157a60b6d",
 	"pubKeyHex": "0xe9bbf604e611b5460a3b3999e9771b6f60417d73ce7c5519e12f7e127a1225ca",
 	"filesEncoding": "utf-8",
-	"gas": 200000,
+	"gas": 20000000,
 	"ttl": 123
 }

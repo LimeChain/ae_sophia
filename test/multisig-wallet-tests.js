@@ -118,39 +118,28 @@ describe('MultiSig', () => {
 			const sf = fs.readFileSync(sourceFile, 'utf8');
 			deployInfo = await getDeployedContractInstance(Universal, config, sf);
 			deployedContractInstance = deployInfo.deployedContract;
-		})
+		});
 
 		it('[NEGATIVE] NOT Configured, should NOT get confirmations', async () => {
 			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'getConfirmations', '(0)'), errorMessages.ONLY_CONFIGURED);
-		})
-
-		it('[NEGATIVE] NOT Configured, should NOT execute tx', async () => {
-			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'executeTransaction', `(1, "${RANDOM_ADDRESS_1}")`), errorMessages.ONLY_CONFIGURED);
-		})
+		});
 
 		it('[NEGATIVE] NOT Configured, should NOT approve', async () => {
-			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`), errorMessages.ONLY_CONFIGURED);
-		})
+			let votingContractInstance = await getVotingContractInstance();
+			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'approve', `(0, ${publicKeyToHex(votingContractInstance.address)})`), errorMessages.ONLY_CONFIGURED);
+		});
 
 		it('[NEGATIVE] NOT Configured, should NOT add tx', async () => {
 			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`), errorMessages.ONLY_CONFIGURED);
-		})
-
-		it('[NEGATIVE] NOT Configured, should NOT add owner', async () => {
-			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addOwner', `("${RANDOM_ADDRESS_1}", true)`), errorMessages.ONLY_CONFIGURED);
-		})
-
-		it('[NEGATIVE] NOT Configured, should NOT remove owner', async () => {
-			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'removeOwner', `("${RANDOM_ADDRESS_1}")`), errorMessages.ONLY_CONFIGURED);
-		})
+		});
 
 		it('[NEGATIVE] NOT Configured, should NOT vote to remove owner', async () => {
 			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `("${RANDOM_ADDRESS_1}")`), errorMessages.ONLY_CONFIGURED);
-		})
+		});
 
 		it('[NEGATIVE] NOT Configured, should NOT vote to add owner', async () => {
 			await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `("${RANDOM_ADDRESS_1}")`), errorMessages.ONLY_CONFIGURED);
-		})
+		});
 	})
 
 	describe('Contract is configured', function () {
@@ -180,34 +169,19 @@ describe('MultiSig', () => {
 				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`));
 			});
 	
-			it('[NEGATIVE] Not owner account should NOT vote to add new owner.', async () => {
+			it('[NEGATIVE] Not owner should NOT vote to add new owner.', async () => {
 				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, "voteAddOwner", `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ONLY_OWNERS);
-			});
-	
-			it('should add new owner correctly, without increase REQUIRED', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, false)`));
-			});
-
-			it('should add new owner correctly, increase REQUIRED', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`));
-			});
-	
-			it('[NEGATIVE] NOT owner should NOT add new owner.', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, "addOwner", `(${publicKeyToHex(RANDOM_ADDRESS_2)}, false)`), errorMessages.ONLY_OWNERS);
 			});
 	
 			it('[NEGATIVE] should NOT vote twice to add already existent owner', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`);
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ALREADY_VOTED);
+				
+				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ALREADY_OWNER);
 			});
 	
 			it('should vote to remove an owner correctly', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`);
+				
 				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`));
 			});
 	
@@ -217,32 +191,19 @@ describe('MultiSig', () => {
 	
 			it('[NEGATIVE] NOT owner should NOT vote to remove an owner.', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`);
+				
 				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, "voteRemoveOwner", `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ONLY_OWNERS);
 			});
-	
-			it('[NEGATIVE] should NOT vote twice to remove an owner', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`);
-				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ALREADY_VOTED);
-			});
-	
+
 			it('should remove an owner correctly', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`);
-				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'removeOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-
-				// try to execute func
-				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ONLY_OWNERS);
+				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`));
 			});
 	
 			it('[NEGATIVE] should NOT remove nonexistent owner, owner to remove is voted correctly', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, false)`);
-				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'removeOwner', `(${publicKeyToHex(RANDOM_ADDRESS_1)})`), errorMessages.NOT_ENOUGH_VOTES);
+				
+				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_1)})`), errorMessages.NOT_AN_OWNER);
 			});
 		})
 
@@ -287,10 +248,15 @@ describe('MultiSig', () => {
 			});
 
 			it('Add 2 transaction and approve second one', async () => {
+				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`); // vote for new owner 
+				await executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(2, true)`); // increase required
+
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`);
+				let votingContractInstance = await getVotingContractInstance();
+
+				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1, ${publicKeyToHex(votingContractInstance.address)})`);
 				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'getConfirmations', `(0)`);
 				let resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === 0, "Transaction have confirmations");
@@ -301,11 +267,17 @@ describe('MultiSig', () => {
 			});
 
 			it('Add 2 transaction and approve both', async () => {
+
+				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`); // vote for new owner 
+				await executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(2, true)`); // increase required
+
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`);
+				let votingContractInstance = await getVotingContractInstance();
+
+				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0, ${publicKeyToHex(votingContractInstance.address)})`);
+				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1, ${publicKeyToHex(votingContractInstance.address)})`);
 				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'getConfirmations', `(0)`);
 				let resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === 1, "Transaction have confirmations");
@@ -318,15 +290,21 @@ describe('MultiSig', () => {
 			it('Add 2 transaction and approve both, first one with 2 approves, second with 1', async () => {
 
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, "true")`);
+				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
+
+				await executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(2, true)`); // increase required
+				await executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(3, true)`); // increase required
+				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteChangeRequirement', `(3, true)`); // increase required
 				
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
 
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1)`);
+				let votingContractInstance = await getVotingContractInstance();
+
+				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0, ${publicKeyToHex(votingContractInstance.address)})`);
+				await executeSmartContractFunction(deployedContractInstance, 'approve', `(1, ${publicKeyToHex(votingContractInstance.address)})`);
 				
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0)`);
+				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0, ${publicKeyToHex(votingContractInstance.address)})`);
 				
 				let funcResult = await executeSmartContractFunction(deployedContractInstance, 'getConfirmations', `(0)`);
 				let resultValue = (await funcResult.decode('int')).value;
@@ -345,16 +323,14 @@ describe('MultiSig', () => {
 				assert.ok(resultValue === 0, "Voting contract state is incorrect!");
 				
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
-
-				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'executeTransaction', `(0, ${publicKeyToHex(votingContractInstance.address)})`));
+				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'approve', `(0, ${publicKeyToHex(votingContractInstance.address)})`));
 
 				funcResult = await executeSmartContractFunction(votingContractInstance, 'result');
 				resultValue = (await funcResult.decode('int')).value;
 				assert.ok(resultValue === 1, "Transaction have confirmations");
 			});
 
-			it('[NEGATIVE] NOT owner should NOT execute approved transaction', async () => {
+			it('[NEGATIVE] NOT owner should NOT approve transaction', async () => {
 			
 				let notOwnerConfig = JSON.parse(JSON.stringify(config));
 				notOwnerConfig.ownerKeyPair = config.notOwnerKeyPair;
@@ -364,116 +340,56 @@ describe('MultiSig', () => {
 				let votingContractInstance = votingContractInfo.deployedContract;
 
 				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
 				
-				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'executeTransaction', `(0, ${publicKeyToHex(votingContractInstance.address)})`), errorMessages.ONLY_OWNERS);
+				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0, ${publicKeyToHex(votingContractInstance.address)})`), errorMessages.ONLY_OWNERS);
 			});
-
-			it('[NEGATIVE] Should NOT vote/approve for a transaction twice.', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
-
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`), errorMessages.ALREADY_VOTED);
-			});
-			
 		})
 
 		describe('Required validation', async function () {
 
-			it('Should execute transaction with more votes.', async () => {
-
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, "true")`);
-
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
-
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0)`);
-
-				let votingContractInstance = await getVotingContractInstance();
-
-				await executeSmartContractFunction(deployedContractInstance, 'executeTransaction', `(0, ${publicKeyToHex(votingContractInstance.address)})`);
-
-				let funcResult = await executeSmartContractFunction(votingContractInstance, 'result');
-				let resultValue = (await funcResult.decode('int')).value;
-				assert.ok(resultValue === 1, "Transaction have confirmations");
+			it('[NEGATIVE] should NOT set "required" bigger than owners count', async () => {
+				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(2, true)`), errorMessages.INVALID_REQUIREMENTS);
 			});
 
-			it('[NEGATIVE] Should NOT execute transaction with less require votes.', async () => {
-
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, "true")`);
-
+			it('[NEGATIVE] should NOT set "required" to 0', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`);
-				
-				await executeSmartContractFunction(deployedContractInstance, 'addTransaction', `("${VALID_METHOD_NAME}")`);
-				await executeSmartContractFunction(deployedContractInstance, 'approve', `(0)`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'approve', `(0)`);
-
-				let votingContractInstance = await getVotingContractInstance();
-
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'executeTransaction', `(0, ${publicKeyToHex(votingContractInstance.address)})`), errorMessages.NOT_ENOUGH_VOTES);
+				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(0, true)`), errorMessages.INVALID_REQUIREMENTS);
 			});
 
-			it('[NEGATIVE] should NOT add new owner, there are no votes for that address/owner', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_1)})`);
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, "true")`), errorMessages.NOT_ENOUGH_VOTES);
-			});
+			it('[NEGATIVE] should NOT add new owner with less votes', async () => {
+				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`); // add new owner
+				await executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(2, true)`); // increase required
+				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`); // vote for new owner 
 
-			it('Should add new owner with more votes', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`);
-
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-
-				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, false)`));
+				// not owner should not vote, RANDOM_ADDRESS_3 is still not owner
+				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_1)})`), errorMessages.ONLY_OWNERS);
 			});
 
 			it('[NEGATIVE] Should NOT add new owner twice', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`);
-
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`),errorMessages.NOT_ENOUGH_VOTES);
+				await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`), errorMessages.ALREADY_OWNER);
 			});
 
-			it('Should remove owner with more votes', async () => {
+			it('Should NOT remove owner without needed votes', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`);
+				await executeSmartContractFunction(deployedContractInstance, 'voteChangeRequirement', `(2, true)`);
 
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-
-				await assert.isFulfilled(executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)}, false)`));
-
-				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-				await executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-
-				await executeSmartContractFunction(deployedContractInstance, 'removeOwner', `(${publicKeyToHex(RANDOM_ADDRESS_2)})`);
-			});
-
-			it('[NEGATIVE] Should NOT remove owner without vote', async () => {
-				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`);
-				
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'removeOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`), errorMessages.NOT_ENOUGH_VOTES);
+				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
+				await assert.isFulfilled(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'voteChangeRequirement', `(2, true)`))
 			});
 
 			it('[NEGATIVE] Should NOT remove owner twice', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'addOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)}, false)`);
+				
+				// let funcResult = await executeSmartContractFunction(deployedContractInstance, 'isOwnerExists', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
+				// let resultValue = (await funcResult.decode('int')).value;
+				// console.log('resultValue 1');
+				// console.log(resultValue);
 
 				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				await executeSmartContractFunction(deployedContractInstance, 'removeOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-
-				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'removeOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`), errorMessages.NOT_ENOUGH_VOTES);
+				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`), errorMessages.NOT_AN_OWNER);
 			});
 		})
-	})
+	})	
 })

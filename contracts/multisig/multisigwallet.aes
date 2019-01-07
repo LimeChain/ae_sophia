@@ -10,11 +10,11 @@ contract MultiSigWallet =
         ownersCount              : int,
         transactionsCount        : int,
         required                 : int,
-        owners                   : map(int, address),
-        ownerIndex               : map(address, int),
+        mapOwners                   : map(int, address),
+        mapOwnerIndex               : map(address, int),
         transactions             : map(int, transaction),
         removeOwnerVotes         : map(address, int),
-        addOwnerVotes                 : map(address, int),
+        addOwnerVotes            : map(address, int),
         removeOwnerConfirmations : map((address,address), bool), // map(address, map(address, bool)),
         addOwnerConfirmations    : map((address,address), bool), // map((address,address), int) newOwner | currentOwner | true/false
         changeRequirementVotes : map((int,address), bool), // map((new_required, owner_address), vote_decision)
@@ -37,8 +37,8 @@ contract MultiSigWallet =
           configured               = false,
           ownersCount              = 0,
           transactionsCount        = 0,
-          owners                   = {},
-          ownerIndex               = {},
+          mapOwners                   = {},
+          mapOwnerIndex               = {},
           transactions             = {},
           removeOwnerVotes              = {},
           addOwnerVotes                 = {},
@@ -65,43 +65,38 @@ contract MultiSigWallet =
         // validate requirements
         validateRequirement(_newRequired, state.ownersCount)
         // is caller already voted
-        require(!isOwnerVotedForRequirement(_newRequired, Call.caller), "Your vote has been already submitted.")
+        hasVotedForRequirementChange(_newRequired, Call.caller)
 
         put(state{changeRequirementVotes[(_newRequired, Call.caller)] = true})
-        if(_vote)
-            put(state{changeRequirementConfirmations[_newRequired] = state.changeRequirementConfirmations[_newRequired] + 1})
 
-        if(state.changeRequirementConfirmations[_newRequired] >= state.required)
+        if(_vote)
+            put(state{changeRequirementConfirmations[_newRequired] = getRequirementConfirmations(_newRequired) + 1})
+
+        if(getRequirementConfirmations(_newRequired) >= state.required)
             put(state{changeRequirementConfirmations[_newRequired] = 0})
             put(state{required = _newRequired})
             reInitRequirementVote(_newRequired, 1, state.ownersCount)
 
+    public function get() : int =
+        state.required
+
     public stateful function voteAddOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
-        require(!getValueFromMapTuple(owner, Call.caller, state.addOwnerConfirmations), "Your vote has been already submitted.")
+        isNotOwner(owner)
+        hasVotedForOwnerAddition(owner)
         
         put(state{addOwnerVotes[owner] = getValueAddressInt(owner, state.addOwnerVotes) + 1})
-
         put(state{addOwnerConfirmations[(owner,Call.caller)] = true}) // set this value to true because current owner make a vote 
 
         if(getValueAddressInt(owner, state.addOwnerVotes) >= state.required)
             addNewOwner(owner)
-
-    // public stateful function addOwner(_owner : address) = 
-    //     onlyConfigured()
-    //     onlyOwners()
-
-    //     require(getValueAddressInt(_owner, state.addOwnerVotes) >= state.required, "Not enough votes!")
-
-    //     addNewOwner(_owner) 
             
-
     public stateful function voteRemoveOwner(owner : address) =
         onlyConfigured()
         onlyOwners()
-        require(isOwnerExists(owner), "Address is not an owner!")
-        require(!getValueFromMapTuple(owner, Call.caller, state.removeOwnerConfirmations), "Your vote has been already submitted.")
+        isOwnerExists(owner)
+        hasVotedForOwnerRemoval(owner)
         
         put(state{removeOwnerVotes[owner] = getValueAddressInt(owner, state.removeOwnerVotes) + 1})
         put(state{removeOwnerConfirmations[(owner,Call.caller)] = true})
@@ -109,73 +104,10 @@ contract MultiSigWallet =
         if(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required)
             removeOwner(owner)
 
-    private stateful function removeOwner(owner : address) =
-        onlyConfigured()
-        onlyOwners()
-        require(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required, "Not enough votes!")
-        require(!state.removeOwnerConfirmations[(owner, Call.caller)], "Your vote has been already submitted.")
-
-        // swap last owner with deleted one
-        let _ownerIndex = state.ownerIndex[owner]
-        let lastAddedOwner = state.owners[state.ownersCount]
-        put(state{ownerIndex[lastAddedOwner] = _ownerIndex})
-        put(state{owners[_ownerIndex] = lastAddedOwner})
-
-        // Map.delete is not working correctly
-        put(state{ownerIndex[owner] = 0}) // del me
-        put(state{removeOwnerVotes[owner] = 0})
-
-        Map.delete(owner, state.removeOwnerVotes)
-        Map.delete(owner, state.ownerIndex)
-        // Map.delete(_ownerIndex, state.owners) // after swat this operation is not needed
-        put(state{ownersCount = state.ownersCount - 1})    
-        put(state{required = calculateMinimumRequired(state.required)})
-
-        reInitRemoveOwnerVote(owner, 1, state.ownersCount)
-
     public function getConfirmations(txId : int) : int =
         onlyConfigured()
 
         state.transactions[txId].confirmations
-
-    private stateful function executeTransaction(txId : int, v : Voting) : bool = 
-        onlyConfigured()
-        onlyOwners()
-        validRequirement()
-
-        let transaction : transaction = state.transactions[txId]
-        require(transaction.confirmations >= state.required, "Not enough votes!")
-        
-        switch(transaction.method)
-            "Vote"   => v.vote()
-            "Revoke" => v.revoke()
-
-        let transaction' = transaction { 
-            id = transaction.id, 
-            confirmations = 0, 
-            method = transaction.method }
-    
-        put(state{transactions = state.transactions{[txId] = transaction'}})
-
-        reInitApproveTxVote(txId, 1, state.ownersCount)
-        true
-
-    public stateful function approve(txId : int) = // pass contract address
-        onlyConfigured()
-        onlyOwners()
-        require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.txConfirmations), "Your vote has been already submitted.")
-
-        let transaction : transaction = state.transactions[txId]
-
-        let transaction' = transaction { 
-            id = transaction.id, 
-            confirmations = transaction.confirmations + 1, 
-            method = transaction.method }
-
-        put(state{txConfirmations[(txId,Call.caller)] = true})
-        put(state{transactions = state.transactions{[txId] = transaction'}})
-
-        // if there are votes execute tx
 
     public stateful function addTransaction(method : string) : int = 
         onlyConfigured()
@@ -192,6 +124,47 @@ contract MultiSigWallet =
 
         tx.id
 
+    public stateful function approve(txId : int, votingContract : Voting) = // pass contract address
+        onlyConfigured()
+        onlyOwners()
+        //require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.txConfirmations), "Your vote has been already submitted.")
+        hasVotedTxApproved(txId)
+
+        let transaction : transaction = state.transactions[txId]
+
+        let transaction' = transaction { 
+            id = transaction.id, 
+            confirmations = transaction.confirmations + 1, 
+            method = transaction.method }
+
+        put(state{txConfirmations[(txId,Call.caller)] = true})
+        put(state{transactions = state.transactions{[txId] = transaction'}})
+
+        // if there are needed votes execute tx
+        if(transaction'.confirmations >= state.required)
+            executeTransaction(txId, votingContract)
+
+    private stateful function executeTransaction(txId : int, votingContract : Voting) = 
+        onlyConfigured()
+        onlyOwners()
+        validRequirement()
+
+        let transaction : transaction = state.transactions[txId]
+        require(transaction.confirmations >= state.required, "Not enough votes!")
+        
+        switch(transaction.method)
+            "Vote"   => votingContract.vote()
+            "Revoke" => votingContract.revoke()
+
+        let transaction' = transaction { 
+            id = transaction.id, 
+            confirmations = 0, 
+            method = transaction.method }
+    
+        put(state{transactions = state.transactions{[txId] = transaction'}})
+
+        reInitApproveTxVote(txId, 1, state.ownersCount)
+
     private function validateMethodName(method: string) : bool =
         switch(method)
             "Vote" => true
@@ -203,8 +176,8 @@ contract MultiSigWallet =
           
         put(state{addOwnerVotes[owner] = 0})
         put(state{ownersCount = state.ownersCount + 1})    
-        put(state{owners = state.owners{[state.ownersCount] = owner}})
-        put(state{ownerIndex = state.ownerIndex{[owner] = state.ownersCount}})
+        put(state{mapOwners = state.mapOwners{[state.ownersCount] = owner}})
+        put(state{mapOwnerIndex = state.mapOwnerIndex{[owner] = state.ownersCount}})
 
         reInitAddOwnerVote(owner, 1, state.ownersCount)
 
@@ -212,7 +185,7 @@ contract MultiSigWallet =
         require(Call.caller == state.owner, "Only owner")
         
     private function onlyOwners() =
-        require(lookupByAddress(Call.caller, state.ownerIndex, 0) != 0, "Only owners")
+        require(lookupByAddress(Call.caller, state.mapOwnerIndex, 0) != 0, "Only owners")
 
     private function lookupByAddress(key : address, _map, defaultValue : int) =
         switch(Map.lookup(key, _map))
@@ -263,44 +236,101 @@ contract MultiSigWallet =
             None    => 0
             Some(x) => x
 
-    private function isOwnerExists(_owner : address) : bool =
-        switch (Map.lookup(_owner, state.ownerIndex))
-            None => false
-            Some(x) => true
+    public function isOwnerExists(_owner : address) : int =
+        let index = 
+            switch (Map.lookup(_owner, state.mapOwnerIndex))
+                None => 0
+                Some(x) => x
+
+        require(index > 0, "Address is not an owner!")
+
+        index
 
     private function calculateMinimumRequired(currentRequire) : int =
         switch(currentRequire =< 1)
             true => 1
             false => currentRequire - 1
 
-    private function validateRequirement(_required: int, ownerCount: int) =
-        require(_required =< ownerCount && _required > 0 && ownerCount > 0, "Invalid requirements!")
+    private function validateRequirement(_required: int, ownerCount: int) : bool =
+        require(_required =< ownerCount && _required > 0 && ownerCount > 0, "Invalid requirements.")
+        true
     
     private function isOwnerVotedForRequirement(_newRequired: int, _voter : address) : bool = 
         switch(Map.lookup((_newRequired, _voter), state.changeRequirementVotes))
-            None    => false
-            Some(x) => true
+                None    => false
+                Some(x) => x
 
     private function reInitRequirementVote(_required : int, currentOwnerIndex : int, maxIndex : int ) = 
         if(currentOwnerIndex =< maxIndex)
-            put(state{changeRequirementVotes[(_required, state.owners[currentOwnerIndex])] = false})
-            Map.delete((_required, state.owners[currentOwnerIndex]), state.changeRequirementVotes)
+            put(state{changeRequirementVotes[(_required, state.mapOwners[currentOwnerIndex])] = false})
+            Map.delete((_required, state.mapOwners[currentOwnerIndex]), state.changeRequirementVotes)
             reInitRequirementVote(_required, currentOwnerIndex + 1, maxIndex)
 
     private function reInitAddOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int) = 
         if(_currentOwnerIndex =< maxIndex)
-            put(state{addOwnerConfirmations[(_owner, state.owners[_currentOwnerIndex])] = false})
-            Map.delete((_owner, state.owners[_currentOwnerIndex]), state.addOwnerConfirmations)
+            put(state{addOwnerConfirmations[(_owner, state.mapOwners[_currentOwnerIndex])] = false})
+            Map.delete((_owner, state.mapOwners[_currentOwnerIndex]), state.addOwnerConfirmations)
             reInitAddOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
 
     private function reInitRemoveOwnerVote(_owner : address, _currentOwnerIndex : int, maxIndex : int) = 
         if(_currentOwnerIndex =< maxIndex)
-            put(state{removeOwnerConfirmations[(_owner, state.owners[_currentOwnerIndex])] = false})
-            Map.delete((_owner, state.owners[_currentOwnerIndex]), state.removeOwnerConfirmations)
+            put(state{removeOwnerConfirmations[(_owner, state.mapOwners[_currentOwnerIndex])] = false})
+            Map.delete((_owner, state.mapOwners[_currentOwnerIndex]), state.removeOwnerConfirmations)
             reInitRemoveOwnerVote(_owner, _currentOwnerIndex + 1, maxIndex)
 
     private function reInitApproveTxVote(_txId : int, currentOwnerIndex : int, maxIndex : int ) = 
         if(currentOwnerIndex =< maxIndex)
-            put(state{txConfirmations[(_txId,state.owners[currentOwnerIndex])] = false})
-            Map.delete((_txId, state.owners[currentOwnerIndex]), state.txConfirmations)
+            put(state{txConfirmations[(_txId,state.mapOwners[currentOwnerIndex])] = false})
+            Map.delete((_txId, state.mapOwners[currentOwnerIndex]), state.txConfirmations)
             reInitApproveTxVote(_txId, currentOwnerIndex + 1, maxIndex)
+
+    private function hasVotedForRequirementChange(_newRequired : int, caller : address) =
+        require(!isOwnerVotedForRequirement(_newRequired, caller), "Your vote has been already submitted.")
+
+    private function getRequirementConfirmations(key : int) : int =
+        switch(Map.lookup(key, state.changeRequirementConfirmations))
+            None    => 0
+            Some(x) => x
+
+    private function isNotOwner(_newOwner: address) =
+        let index =
+            switch(Map.lookup(_newOwner, state.mapOwnerIndex))
+                None => 0
+                Some(x) => x
+
+        require(index == 0, "Suggested owner is already owner!")
+
+    private function hasVotedForOwnerAddition(owner : address) =
+        require(!getValueFromMapTuple(owner, Call.caller, state.addOwnerConfirmations), "Your vote has been already submitted.")
+
+    private function hasVotedForOwnerRemoval(owner: address) =
+        require(!getValueFromMapTuple(owner, Call.caller, state.removeOwnerConfirmations), "Your vote has been already submitted.")
+
+    private function hasEnoughRemoveVotes(owner: address) =
+        require(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required, "Not enough votes!")
+
+    private stateful function removeOwner(owner : address) =
+        onlyConfigured()
+        onlyOwners()
+        //require(getValueAddressInt(owner, state.removeOwnerVotes) >= state.required, "Not enough votes!")
+        hasEnoughRemoveVotes(owner)
+
+        // swap last owner with deleted one
+        let _ownerIndex = state.mapOwnerIndex[owner]
+        let lastAddedOwner = state.mapOwners[state.ownersCount]
+        put(state{mapOwnerIndex[lastAddedOwner] = _ownerIndex})
+        put(state{mapOwners[_ownerIndex] = lastAddedOwner})
+
+        // Map.delete is not working correctly
+        put(state{mapOwnerIndex[owner] = 0}) 
+        put(state{removeOwnerVotes[owner] = 0})
+
+        Map.delete(owner, state.removeOwnerVotes)
+        Map.delete(owner, state.mapOwnerIndex)
+        put(state{ownersCount = state.ownersCount - 1})    
+        put(state{required = calculateMinimumRequired(state.required)})
+
+        reInitRemoveOwnerVote(owner, 1, state.ownersCount)
+
+    private function hasVotedTxApproved(txId: int) =
+        require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.txConfirmations), "Your vote has been already submitted.")
