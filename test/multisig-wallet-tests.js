@@ -382,11 +382,6 @@ describe('MultiSig', () => {
 			it('[NEGATIVE] Should NOT remove owner twice', async () => {
 				await executeSmartContractFunction(deployedContractInstance, 'voteAddOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
 				
-				// let funcResult = await executeSmartContractFunction(deployedContractInstance, 'isOwnerExists', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
-				// let resultValue = (await funcResult.decode('int')).value;
-				// console.log('resultValue 1');
-				// console.log(resultValue);
-
 				await executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`);
 				await assert.isRejected(executeSmartContractFunction(deployedContractInstance, 'voteRemoveOwner', `(${publicKeyToHex(RANDOM_ADDRESS_3)})`), errorMessages.NOT_AN_OWNER);
 			});

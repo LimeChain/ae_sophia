@@ -232,7 +232,7 @@ contract MultiSigWallet =
             None    => 0
             Some(x) => x
 
-    public function isOwnerExists(_owner : address) : int =
+    private function isOwnerExists(_owner : address) : int =
         let index = 
             switch (Map.lookup(_owner, state.mOwnerIndex))
                 None => 0
