@@ -101,10 +101,9 @@ const executeSmartContractFunction = async function (deployedContract, functionN
 	let configuration = {
 		options: {
 			ttl: ttl,
-			//gas: gas
+			gas: gas
 		},
 		abi: "sophia",
-		//gas: gas
 	};
 
 	if (args) {
@@ -121,10 +120,9 @@ const executeSmartContractFunctionFromAnotherClient = async function (clientConf
 	let configuration = {
 		options: {
 			ttl: ttl,
-			///gas: gas
+			gas: gas
 		},
 		abi: "sophia",
-		//gas: gas
 	};
 
 	if (args) {
