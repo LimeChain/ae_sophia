@@ -127,7 +127,6 @@ contract MultiSigWallet =
     public stateful function approve(txId : int, votingContract : Voting) = // pass contract address
         onlyConfigured()
         onlyOwners()
-        //require(!getValueFromMapTupleIntAddress(txId, Call.caller, state.mTxConfirmations), "Your vote has been already submitted.")
         hasVotedTxApproved(txId)
 
         let transaction : transaction = state.mTransactions[txId]
