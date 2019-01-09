@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const Crypto = require('@aeternity/aepp-sdk').Crypto;
-
+const DEFAULT_MAX_GAS = 1000000001;
+						
 const readFile = (path, encoding = null, errTitle = 'READ FILE ERR') => {
 	try {
 		return fs.readFileSync(
@@ -96,13 +97,13 @@ const getDeployedContractInstance = async function (Universal, clientConfig, con
 };
 
 // args that you pass, should be something like this => `("${INIT_CONTRACT_NAME}", ${INIT_AGE})`
-const executeSmartContractFunction = async function (deployedContract, functionName, args, ttl = 345345, gas = 9000000000) {
+const executeSmartContractFunction = async function (deployedContract, functionName, args, ttl = 345345, gas = DEFAULT_MAX_GAS) {
 	let configuration = {
 		options: {
 			ttl: ttl,
 			gas: gas
 		},
-		abi: "sophia"
+		abi: "sophia",
 	};
 
 	if (args) {
@@ -114,14 +115,14 @@ const executeSmartContractFunction = async function (deployedContract, functionN
 	return result
 }
 
-const executeSmartContractFunctionFromAnotherClient = async function (clientConfiguration, functionName, args, ttl = 345345, gas = 9000000000) {
+const executeSmartContractFunctionFromAnotherClient = async function (clientConfiguration, functionName, args, ttl = 345345, gas = DEFAULT_MAX_GAS) {
 
 	let configuration = {
 		options: {
 			ttl: ttl,
 			gas: gas
 		},
-		abi: "sophia"
+		abi: "sophia",
 	};
 
 	if (args) {
