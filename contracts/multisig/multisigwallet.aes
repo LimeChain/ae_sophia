@@ -181,7 +181,7 @@ contract MultiSigWallet =
         require(Call.caller == state.owner, "Only owner")
         
     private function onlyOwners() =
-        require(lookupByAddress(Call.caller, state.mOwnerIndex, 0) != 0, "Only owners")
+        require(lookupByAddress(Call.caller, state.mOwnerIndex, 0) != 0, "Caller is not an owner.")
 
     private function lookupByAddress(key : address, _map, defaultValue : int) =
         switch(Map.lookup(key, _map))
