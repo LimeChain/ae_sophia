@@ -1,24 +1,25 @@
 contract ERC20 =
   public function totalSupply : () => int
   public function balanceOf : address => int
-  public function allowance : address, address => int
-  public function transfer : address, int => bool
-  public function approve : address, int => bool
-  public function transferFrom : address, address, int => bool
-  public function increaseAllowance : address, int => bool
-  public function decreaseAllowance : address, int => bool
-  public  function mint : address, int => bool
-  public stateful function burn : int => bool
+  public function allowance : (address, address) => int
+  public function transfer : (address, int) => bool
+  public function approve : (address, int) => bool
+  public function transferFrom : (address, address, int) => bool
+  public function increaseAllowance : (address, int) => bool
+  public function decreaseAllowance : (address, int) => bool
+  public function mint : (address, int) => bool
+  public function safeTransfer : (address, int) => () 
+  public function burn : int => bool
 
 
 contract Crowdsale =
 
     record state = { 
         erc20token : ERC20,
-        wallet : address, // Address where funds are collected
+        wallet : Call.caller, // Address where funds are collected
         rate : int, 
-        weiRaised : int
-        some_map          : map((int,address), bool)} // map(int, map(address, bool))
+        weiRaised : int,
+        some_map : map((int,address), bool)} // map(int, map(address, bool))
 
     public stateful function init(_erc20 : ERC20, _wallet : address, _rate : int) = 
     // require(rate > 0);
@@ -40,57 +41,57 @@ contract Crowdsale =
 
     // the amount of wei raised.
     public function weiRaised() : int =
-        weiRaised
+        state.weiRaised
 
     // beneficiary: Recipient of the token purchase
     public stateful function buyTokens(_beneficiary : address) =
-        let weiAmount = Call.value
+        let _amount = Call.value
 
-        _preValidatePurchase(_beneficiary, weiAmount)
+        _preValidatePurchase(_beneficiary, _amount)
         // calculate token amount to be created
-        let tokens = _getTokenAmount(weiAmount)
+        let tokens = _getTokenAmount(_amount, state.rate)
 
         // update state
-        put(state{weiRaised = add(state.weiRaised, weiAmount)})
+        put(state{weiRaised = add(state.weiRaised, _amount)})
 
         _processPurchase(_beneficiary, tokens)
         // emit TokensPurchased(msg.sender, _beneficiary, weiAmount, tokens);
 
-        _updatePurchasingState(_beneficiary, weiAmount)
+        _updatePurchasingState(_beneficiary, _amount)
 
-        _forwardFunds()
-        _postValidatePurchase(_beneficiary, weiAmount)
+        //_forwardFunds(_amount)
+        _postValidatePurchase(_beneficiary, _amount)
 
 
     // Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
     // _beneficiary Address performing the token purchase
     // _amount Value involved in the purchase
-    private function _preValidatePurchase(address _beneficiary, int _amount) =
-            require(_beneficiary != address(0), "Should not be empty address.");
+    private function _preValidatePurchase(_beneficiary : address , _amount : int) =
+            require(_beneficiary != #0, "Should not be empty address.")
             require(_amount != 0, "Value cannot be zero.")
 
     // Validation of an executed purchase. Observe state and use revert statements to undo rollback when valid conditions are not met.
     // _beneficiary Address performing the token purchase
     // _amount Value involved in the purchase
-    private function _postValidatePurchase(address _beneficiary, int _amount) : bool =
+    private function _postValidatePurchase(_beneficiary : address, _amount : int) : bool =
         require(true, "")
 
     // Source of tokens. Override this method to modify the way in which the crowdsale ultimately gets and sends its tokens.
     // _beneficiary Address performing the token purchase
     // _tokenAmount Number of tokens to be emitted
-    private function _deliverTokens(address _beneficiary, int _tokenAmount) =
-        state.erc20token.safeTransfer(_beneficiary, _tokenAmount)
+    private function _deliverTokens(_beneficiary : address, _tokenAmount : int, _token : ERC20) =
+        _token.safeTransfer(_beneficiary, _tokenAmount)
     
     // Executed when a purchase has been validated and is ready to be executed. Doesn't necessarily emit/send tokens.
     // _beneficiary Address receiving the tokens
     // _tokenAmount Number of tokens to be purchased
-    private function _processPurchase(address _beneficiary, int _tokenAmount) =
-        _deliverTokens(_beneficiary, _tokenAmount)
+    private function _processPurchase(_beneficiary : address, _tokenAmount : int) =
+        _deliverTokens(_beneficiary, _tokenAmount, state.erc20token)
 
     // Override for extensions that require an internal state to check for validity (current user contributions, etc.)
     // _beneficiary Address receiving the tokens
     // _amount Value in wei involved in the purchase
-    private function _updatePurchasingState(address _beneficiary, int _amount) =
+    private function _updatePurchasingState(_beneficiary : address, _amount : int) =
         // optional override
         require(true, "")
 
@@ -98,42 +99,42 @@ contract Crowdsale =
     // Override to extend the way in which ether is converted to tokens.
     // _amount Value to be converted into tokens
     //  Number of tokens that can be purchased with the specified _weiAmount
-    private function _getTokenAmount(int _amount) : int =
+    private function _getTokenAmount(_amount : int, _rate : int) : int =
         mul(_amount, _rate)
 
-    private function _forwardFunds() =
-        //_wallet.transfer(msg.value)
-        raw_spend(state.wallet, Call.value)
+    //private function _forwardFunds(_amount : int) =
+        // _wallet.transfer(msg.value)
+        //raw_spend(state.wallet, _amount)
 
 
     private function require(expression : bool, error : string) =
         if(!expression) 
-            abort(err)
+            abort(error)
 
 
     // safe math 
-    private function add(int a, int b) : int =
-        let c = a + b;
-        require((b >= 0 && c >= a) || (b < 0 && c < a), "Invalid sum operation.");
+    private function add(a : int, b : int) : int =
+        let c = a + b
+        require((b >= 0 && c >= a) || (b < 0 && c < a), "Invalid sum operation.")
 
         c
 
-    private function sub(int a, int b) : int =
+    private function sub(a : int, b : int) : int =
         let c = a - b
-        require((b >= 0 && c <= a) || (b < 0 && c > a), "Invalid subtract operation.");
+        require((b =< 0 && c =< a) || (b < 0 && c > a), "Invalid subtract operation.")
 
         c
     
-    private function mul(int a, int b) : int =
+    private function mul(a : int, b : int) : int =
         if (a == 0)
             0
+        else
+            let c = a * b
+            require(c / a == b, "Invalid multiplication operation.")
 
-        let c = a * b;
-        require(c / a == b), "Invalid multiplication operation.";
+            c
 
-        c
-
-    private function div(int a, int b) : int =
+    private function div(a : int, b : int) : int =
         require(b > 0, "Cannot divide to 0.")
         let c = a / b
 

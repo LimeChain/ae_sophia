@@ -1,18 +1,18 @@
 contract SafeMath =
 
-    public function add(int a, int b) : int =
+    public function add(a : int, b : int) : int =
         let c = a + b;
         require((b >= 0 && c >= a) || (b < 0 && c < a), "Invalid sum operation.");
 
         c
 
-    public function sub(int a, int b) : int =
+    public function sub(a : int, b : int) : int =
         let c = a - b
         require((b >= 0 && c <= a) || (b < 0 && c > a), "Invalid subtract operation.");
 
         c
 
-    public function mul(int a, int b) : int =
+    public function mul(a : int, b : int) : int =
         if (a == 0)
             0
 
@@ -21,7 +21,7 @@ contract SafeMath =
     
         c
 
-    public function div(int a, int b) : int =
+    public function div(a : int, b : int) : int =
         require(b > 0, "Cannot divide to 0.")
         let c = a / b
 
