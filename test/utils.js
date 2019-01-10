@@ -1,8 +1,10 @@
+const { spawn } = require('promisify-child-process');
 const fs = require('fs');
 const path = require('path');
 const Crypto = require('@aeternity/aepp-sdk').Crypto;
-const DEFAULT_MAX_GAS = 1000000001;
-						
+const toBytes = require('@aeternity/aepp-sdk/es/utils/bytes').toBytes;
+const DEFAULT_MAX_GAS = 900000000000001;
+
 const readFile = (path, encoding = null, errTitle = 'READ FILE ERR') => {
 	try {
 		return fs.readFileSync(
@@ -71,7 +73,7 @@ const getDeployedContractInstance = async function (Universal, clientConfig, con
 	compiledContract = await client.contractCompile(contractSource, {
 		gas: clientConfig.gas
 	});
-	
+
 	let deployOptions = {
 		options: {
 			ttl: clientConfig.ttl,
@@ -83,7 +85,7 @@ const getDeployedContractInstance = async function (Universal, clientConfig, con
 	if (initState) {
 		deployOptions.initState = initState;
 	}
-	
+
 	deployedContract = await compiledContract.deploy(deployOptions);
 
 	// printResultWithDelimiter(['Deployed Contract Info:', deployedContract])
@@ -97,13 +99,15 @@ const getDeployedContractInstance = async function (Universal, clientConfig, con
 };
 
 // args that you pass, should be something like this => `("${INIT_CONTRACT_NAME}", ${INIT_AGE})`
-const executeSmartContractFunction = async function (deployedContract, functionName, args, ttl = 345345, gas = DEFAULT_MAX_GAS) {
+const executeSmartContractFunction = async function (deployedContract, functionName, args, amount = 0, ttl = 345345, gas = DEFAULT_MAX_GAS) {
 	let configuration = {
 		options: {
 			ttl: ttl,
-			gas: gas
+			gas: gas,
+			amount: amount
 		},
 		abi: "sophia",
+		gas: DEFAULT_MAX_GAS
 	};
 
 	if (args) {
@@ -115,12 +119,13 @@ const executeSmartContractFunction = async function (deployedContract, functionN
 	return result
 }
 
-const executeSmartContractFunctionFromAnotherClient = async function (clientConfiguration, functionName, args, ttl = 345345, gas = DEFAULT_MAX_GAS) {
+const executeSmartContractFunctionFromAnotherClient = async function (clientConfiguration, functionName, args, amount = 0, ttl = 345345, gas = DEFAULT_MAX_GAS) {
 
 	let configuration = {
 		options: {
 			ttl: ttl,
-			gas: gas
+			gas: gas,
+			amount: amount
 		},
 		abi: "sophia",
 	};
@@ -146,18 +151,41 @@ const getAEClient = async function (Ae, clientConfig, keyPair) {
 	return client;
 }
 
-function printResultWithDelimiter (array) {
+function printResultWithDelimiter(array) {
 	const delimiter = '-'.repeat(80);
-    console.log(delimiter);
-    array.forEach(x => console.log(x));
-    console.log(delimiter);
+	console.log(delimiter);
+	array.forEach(x => console.log(x));
+	console.log(delimiter);
 }
 
-function publicKeyToHex (publicKey) {
+function publicKeyToHex(publicKey) {
 	let byteArray = Crypto.decodeBase58Check(publicKey.split('_')[1]); // const Crypto = require('@aeternity/aepp-sdk').Crypto
 	let asHex = '0x' + byteArray.toString('hex');
 	return asHex;
 }
+
+function decodedHexAddressToPublicAddress(hexAddress) {
+
+	const publicKey = Crypto.aeEncodeKey(toBytes(hexAddress, true));
+
+	return publicKey;
+}
+
+const execute = async (cli, command, args, options = {}) => {
+	const child = spawn(cli, [command, ...args], options)
+	let result = '';
+  
+	child.stdout.on('data', (data) => {
+	  result += data.toString();
+	})
+  
+	child.stderr.on('data', (data) => {
+	  result += data.toString();
+	})
+  
+	await child;
+	return result;
+  }
 
 module.exports = {
 	readFile,
@@ -169,5 +197,7 @@ module.exports = {
 	executeSmartContractFunction,
 	publicKeyToHex,
 	getAEClient,
-	executeSmartContractFunctionFromAnotherClient
+	executeSmartContractFunctionFromAnotherClient,
+	decodedHexAddressToPublicAddress,
+	execute
 }

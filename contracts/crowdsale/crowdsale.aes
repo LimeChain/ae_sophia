@@ -8,7 +8,7 @@ contract ERC20 =
   public function increaseAllowance : (address, int) => bool
   public function decreaseAllowance : (address, int) => bool
   public function mint : (address, int) => bool
-  public function safeTransfer : (address, int) => () 
+  // public function safeTransfer : (address, int) => () 
   public function burn : int => bool
 
 
@@ -18,18 +18,23 @@ contract Crowdsale =
         erc20token : ERC20,
         wallet : address, // Address where funds are collected
         rate : int, 
-        weiRaised : int,
-        some_map : map((int,address), bool)} // map(int, map(address, bool))
+        tknRaised : int}
 
     public stateful function init(_erc20 : ERC20, _wallet : address, _rate : int) = 
-    // require(rate > 0);
-    // require(wallet != address(0));
-    // require(token != address(0));
+        require(_rate > 0, "")
+        require(_wallet != #0, "")
+        // require(_erc20 != #0, "") what is default type
         { erc20token = _erc20,
           wallet = _wallet,
           rate = _rate,
-          weiRaised = 0,
-          some_map = {}}
+          tknRaised = 0}
+
+    // public function get() : ERC20 =
+    //     datatype typerep = ERC20
+    //     typerep
+
+    public function get() : ERC20 =
+        state.erc20token
 
     // the address where funds are collected.
     public function getWallet() : address =
@@ -39,29 +44,30 @@ contract Crowdsale =
     public function getRate() : int =
         state.rate
 
-    // the amount of wei raised.
-    public function weiRaised() : int =
-        state.weiRaised
+    // the amount of token raised.
+    public function tknRaised() : int =
+        state.tknRaised
 
     // Consider calling buyTokens directly when purchasing tokens from a contract.
     // _beneficiary: Recipient of the token purchase
-    public stateful function buyTokens(_beneficiary : address) =
+    public stateful function buyTokens(_beneficiary : address, tokenContract: ERC20) =
         let _amount = Call.value
 
         _preValidatePurchase(_beneficiary, _amount)
         // calculate token amount to be created
         let tokens = _getTokenAmount(_amount, state.rate)
-
+        
         // update state
-        put(state{weiRaised = add(state.weiRaised, _amount)})
+        put(state{tknRaised = add(state.tknRaised, _amount)})
 
-        _processPurchase(_beneficiary, tokens)
+        //_processPurchase(_beneficiary, tokens)
+        tokenContract.transfer(_beneficiary, tokens)
         // emit TokensPurchased(msg.sender, _beneficiary, weiAmount, tokens);
 
-        _updatePurchasingState(_beneficiary, _amount)
+        //_updatePurchasingState(_beneficiary, _amount)
 
-        //_forwardFunds(_amount)
-        _postValidatePurchase(_beneficiary, _amount)
+        //_forwardFunds(_amount) !!!
+        //_postValidatePurchase(_beneficiary, _amount)
 
 
     // Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
@@ -81,7 +87,7 @@ contract Crowdsale =
     // _beneficiary Address performing the token purchase
     // _tokenAmount Number of tokens to be emitted
     private function _deliverTokens(_beneficiary : address, _tokenAmount : int, _token : ERC20) =
-        _token.safeTransfer(_beneficiary, _tokenAmount)
+        _token.transfer(_beneficiary, _tokenAmount)
     
     // Executed when a purchase has been validated and is ready to be executed. Doesn't necessarily emit/send tokens.
     // _beneficiary Address receiving the tokens
