@@ -13,3 +13,4 @@ erc721.aes.deploy*
 package-lock.json
 .vscode
 .aeproject-store
+.forgae-store

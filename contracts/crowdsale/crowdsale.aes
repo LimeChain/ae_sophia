@@ -16,7 +16,7 @@ contract Crowdsale =
 
     record state = { 
         erc20token : ERC20,
-        wallet : Call.caller, // Address where funds are collected
+        wallet : address, // Address where funds are collected
         rate : int, 
         weiRaised : int,
         some_map : map((int,address), bool)} // map(int, map(address, bool))
@@ -32,18 +32,19 @@ contract Crowdsale =
           some_map = {}}
 
     // the address where funds are collected.
-    public function wallet() : address =
-        wallet
+    public function getWallet() : address =
+        state.wallet
 
     // the number of token units a buyer gets per wei.
-    public function rate() : int =
-        rate
+    public function getRate() : int =
+        state.rate
 
     // the amount of wei raised.
     public function weiRaised() : int =
         state.weiRaised
 
-    // beneficiary: Recipient of the token purchase
+    // Consider calling buyTokens directly when purchasing tokens from a contract.
+    // _beneficiary: Recipient of the token purchase
     public stateful function buyTokens(_beneficiary : address) =
         let _amount = Call.value
 
@@ -74,7 +75,7 @@ contract Crowdsale =
     // _beneficiary Address performing the token purchase
     // _amount Value involved in the purchase
     private function _postValidatePurchase(_beneficiary : address, _amount : int) : bool =
-        require(true, "")
+        require(true, "Error message")
 
     // Source of tokens. Override this method to modify the way in which the crowdsale ultimately gets and sends its tokens.
     // _beneficiary Address performing the token purchase
@@ -93,7 +94,7 @@ contract Crowdsale =
     // _amount Value in wei involved in the purchase
     private function _updatePurchasingState(_beneficiary : address, _amount : int) =
         // optional override
-        require(true, "")
+        require(true, "Error message")
 
 
     // Override to extend the way in which ether is converted to tokens.
@@ -111,6 +112,7 @@ contract Crowdsale =
         if(!expression) 
             abort(error)
 
+        true
 
     // safe math 
     private function add(a : int, b : int) : int =
@@ -141,17 +143,4 @@ contract Crowdsale =
         c
 
 
-    //event TokensPurchased(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
-    
-    /**
-     * @dev fallback function ***DO NOT OVERRIDE***
-     * Note that other contracts will transfer fund with a base gas stipend
-     * of 2300, which is not enough to call buyTokens. Consider calling
-     * buyTokens directly when purchasing tokens from a contract.
-     */
-    // function () external payable {
-    //     buyTokens(msg.sender);
-    // }
-
-
-
+    //event TokensPurchased(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount)
