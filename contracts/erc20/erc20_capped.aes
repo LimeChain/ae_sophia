@@ -42,13 +42,14 @@ contract ERC20Capped =
     true
 
   private stateful function _transfer(from: address, to: address, value: int) : bool =
+    require(value =< state._cap, "Value is bigger than the cap.")
     require(value > 0, "Value is sub zero")
-    require((value =< balanceOf(from)), "Not enough balance")
+    require(value =< balanceOf(from), "Not enough balance")
     require(to != #0, "Invalid address")
 
     put(state{
-      _balances[from] = sub(state._balances[from], value),
-      _balances[to] = add(state._balances[to], value)})
+      _balances[from] = sub(balanceOf(from), value),
+      _balances[to] = add(balanceOf(to), value)})
 
     true
 
@@ -74,7 +75,7 @@ contract ERC20Capped =
 
   public stateful function mint(account: address, value: int) : bool =
     onlyOwner()
-    require(add(state._totalSupply, value) < state._cap, "Total supply exceeds cap")
+    require(add(state._totalSupply, value) =< state._cap, "Total supply exceeds cap")
     require(account != #0, "Invalid address")
 
     put(state{_totalSupply = add(state._totalSupply, value),

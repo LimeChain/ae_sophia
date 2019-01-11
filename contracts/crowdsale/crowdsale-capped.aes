@@ -1,5 +1,6 @@
 contract ERC20 =
   public function totalSupply : () => int
+  public function cap : () => int
   public function balanceOf : address => int
   public function allowance : (address, address) => int
   public function transfer : (address, int) => bool
@@ -18,7 +19,7 @@ contract Crowdsale =
         erc20token : ERC20,
         wallet : address, // Address where funds are collected
         rate : int, 
-        tknRaised : int}
+        aeRaised : int}
 
     public stateful function init(_erc20 : ERC20, _wallet : address, _rate : int) = 
         require(_rate > 0, "")
@@ -27,11 +28,7 @@ contract Crowdsale =
         { erc20token = _erc20,
           wallet = _wallet,
           rate = _rate,
-          tknRaised = 0}
-
-    // public function get() : ERC20 =
-    //     datatype typerep = ERC20
-    //     typerep
+          aeRaised = 0}
 
     public function get() : ERC20 =
         state.erc20token
@@ -45,12 +42,12 @@ contract Crowdsale =
         state.rate
 
     // the amount of token raised.
-    public function tknRaised() : int =
-        state.tknRaised
+    public function aeRaised() : int =
+        state.aeRaised
 
     // Consider calling buyTokens directly when purchasing tokens from a contract.
     // _beneficiary: Recipient of the token purchase
-    public stateful function buyTokens(_beneficiary : address, tokenContract: ERC20) =
+    public stateful function buyTokens(_beneficiary : address) =
         let _amount = Call.value
 
         _preValidatePurchase(_beneficiary, _amount)
@@ -58,16 +55,15 @@ contract Crowdsale =
         let tokens = _getTokenAmount(_amount, state.rate)
         
         // update state
-        put(state{tknRaised = add(state.tknRaised, _amount)})
+        put(state{aeRaised = add(state.aeRaised, _amount)})
 
-        //_processPurchase(_beneficiary, tokens)
-        tokenContract.transfer(_beneficiary, tokens)
-        // emit TokensPurchased(msg.sender, _beneficiary, weiAmount, tokens);
+        _processPurchase(_beneficiary, tokens)
+        // TODO: throw event something like TokensPurchased(Call.caller, _beneficiary, aeAmount, tokens);
 
-        //_updatePurchasingState(_beneficiary, _amount)
+        _updatePurchasingState(_beneficiary, _amount)
 
-        //_forwardFunds(_amount) !!!
-        //_postValidatePurchase(_beneficiary, _amount)
+        _forwardFunds(_amount)
+        _postValidatePurchase(_beneficiary, _amount)
 
 
     // Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
@@ -109,9 +105,8 @@ contract Crowdsale =
     private function _getTokenAmount(_amount : int, _rate : int) : int =
         mul(_amount, _rate)
 
-    //private function _forwardFunds(_amount : int) =
-        // _wallet.transfer(msg.value)
-        //raw_spend(state.wallet, _amount)
+    private function _forwardFunds(_amount : int) =
+        Chain.spend(state.wallet, _amount)
 
 
     private function require(expression : bool, error : string) =
@@ -147,6 +142,3 @@ contract Crowdsale =
         let c = a / b
 
         c
-
-
-    //event TokensPurchased(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount)
