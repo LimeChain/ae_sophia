@@ -11,7 +11,9 @@ const utils = require('./utils');
 const errorMessages = require('./error-messages').crowdsale;
 
 const sourceFile = "./../contracts/crowdsale/crowdsale-capped.aes";
+const mintableCrowdsaleContractPath = './../contracts/crowdsale/crowdsale-mintable.aes'
 const erc20CappedPath = "./../contracts/erc20/erc20_capped.aes";
+const erc20MintablePath = "./../contracts/erc20/erc20_mintable.aes";
 
 const getDeployedContractInstance = utils.getDeployedContractInstance;
 const executeSmartContractFunction = utils.executeSmartContractFunction;
@@ -186,4 +188,54 @@ describe('Crowdsale', () => {
             assert.equal(aes * DEFAULT_RATE, balanceOf, "Balance is not equal to bought tokens!");
         });
     });
+
+    describe.only('Mintable crowdsale', async () => {
+        let contractInstance;
+        let anotherClientConfiguration;
+        let erc20Instance;
+        let deployInfo;
+
+        const DEFAULT_RATE = 5;
+        const END_TIME = 1000 * 60 * 1;
+        let i = 0;
+
+        beforeEach(async () => {
+            let sf = fs.readFileSync(path.resolve(__dirname, erc20MintablePath), 'utf8');
+            erc20Instance = (await getDeployedContractInstance(Universal, config, sf)).deployedContract;
+
+            sf = fs.readFileSync(path.resolve(__dirname, mintableCrowdsaleContractPath), 'utf8');
+            deployInfo = await getDeployedContractInstance(Universal, config, sf, `(${publicKeyToHex(erc20Instance.address)}, ${publicKeyToHex(config.ownerKeyPair.publicKey)}, ${DEFAULT_RATE}, ${END_TIME * i})`);
+            i++;
+            contractInstance = deployInfo.deployedContract;
+
+            await executeSmartContractFunction(erc20Instance, 'transferOwnership', `(${publicKeyToHex(contractInstance.address)})`);
+        });
+
+        it("[NEGATIVE] Should NOT buy tokens when crowdsale has ended.", async () => {
+            await assert.isRejected(executeSmartContractFunction(contractInstance, 'buyTokens', `(45)`, 100), errorMessages.CROWDSALE_HAS_ENDED);
+        });
+
+        it("Should return ownership to the origin owner after .", async () => {
+            await assert.isFulfilled(executeSmartContractFunction(contractInstance, 'endCrowdsale'));
+        });
+
+        it("[NEGATIVE] Should NOT buy tokens after returning ownership to the origin owner.", async () => {
+            await executeSmartContractFunction(contractInstance, 'endCrowdsale');
+            await assert.isRejected(executeSmartContractFunction(contractInstance, 'buyTokens', `(10)`, 100), errorMessages.ONLY_OWNER_CAN_MINT);
+
+            let anotherClient = await getAEClient(Universal, config, config.notOwnerKeyPair);
+
+        	anotherClientConfiguration = {
+        		client: anotherClient,
+        		byteCode: deployInfo.compiledContract.bytecode,
+        		contractAddress: contractInstance.address
+            }
+            
+            await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'buyTokens', `(10)`, 100), errorMessages.ONLY_OWNER_CAN_MINT);
+        });
+
+        it("Should buy tokens before crowdsale end.", async () => {
+            await assert.isFulfilled(executeSmartContractFunction(contractInstance, 'buyTokens', `(10)`, 100));
+        });
+    })
 });

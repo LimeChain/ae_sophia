@@ -1,27 +1,26 @@
 contract ERC20Capped =
   record state = {
     _owner            : address,
-    _cap              : int,
     _totalSupply      : int,
     _balances         : map(address, int),
     _allowed          : map((address,address), int)}
 
-  public stateful function init(cap : int) : state = 
-    require(cap > 0, "Cap can't be less than a zero")
+  public stateful function init() : state =
     { _owner       = Call.caller,
-      _cap         = cap,
       _totalSupply = 0,
       _balances    = {},
       _allowed     = {}}
 
   private function lookupByAddress(k : address, m, v) =
-  	switch(Map.lookup(k, m))
-	    None    => v
-	    Some(x) => x
+    switch(Map.lookup(k, m))
+      None    => v
+      Some(x) => x
+      
+  public function transferOwnership(newOwner: address) =
+    onlyOwner()
+    put(state{_owner = newOwner})
 
   public function totalSupply() : int = state._totalSupply
-
-  public function cap() : int = state._cap
 
   public function balanceOf(who: address) : int = lookupByAddress(who, state._balances, 0)
 
@@ -42,7 +41,6 @@ contract ERC20Capped =
     true
 
   private stateful function _transfer(from: address, to: address, value: int) : bool =
-    require(value =< state._cap, "Value is bigger than the cap.")
     require(value > 0, "Value is sub zero")
     require(value =< balanceOf(from), "Not enough balance")
     require(to != #0, "Invalid address")
@@ -75,7 +73,6 @@ contract ERC20Capped =
 
   public stateful function mint(account: address, value: int) : bool =
     onlyOwner()
-    require(add(state._totalSupply, value) =< state._cap, "Total supply exceeds cap")
     require(account != #0, "Invalid address")
 
     put(state{_totalSupply = add(state._totalSupply, value),
