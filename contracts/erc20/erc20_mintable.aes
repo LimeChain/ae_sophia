@@ -1,4 +1,4 @@
-contract ERC20Capped =
+contract ERC20Mintable =
   record state = {
     _owner            : address,
     _totalSupply      : int,

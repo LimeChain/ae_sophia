@@ -13,7 +13,7 @@ contract ERC20 =
   public function burn : int => bool
 
 
-contract Crowdsale =
+contract MintableCrowdsale =
 
     record state = { 
         erc20token : ERC20,
@@ -24,9 +24,9 @@ contract Crowdsale =
         aeRaised : int}
 
     public stateful function init(_erc20 : ERC20, _wallet : address, _rate : int, seconds : int) = 
-        require(_rate > 0, "")
-        require(_wallet != #0, "")
-        // require(_erc20 != #0, "") ??? what is default type
+        require(_rate > 0, "Should be a positive number!")
+        require(_wallet != #0, "Should not be empty address.")
+        // require(_erc20 != #0, "") what is default value ?
         { erc20token = _erc20,
           wallet = _wallet,
           rate = _rate,
@@ -34,8 +34,8 @@ contract Crowdsale =
           owner = Call.caller,
           aeRaised = 0}
 
-    public function get() : int =
-        Chain.timestamp
+    public function getToken() : ERC20 =
+        state.erc20token
 
     // the address where funds are collected.
     public function getWallet() : address =
@@ -72,6 +72,8 @@ contract Crowdsale =
 
     public function endCrowdsale() =
         isOwner()
+        isNotCrowdsale()
+
         state.erc20token.transferOwnership(Call.caller)
 
     public function getEndDate() : int =
@@ -88,7 +90,7 @@ contract Crowdsale =
     // _beneficiary Address performing the token purchase
     // _amount Value involved in the purchase
     private function _postValidatePurchase(_beneficiary : address, _amount : int) : bool =
-        require(true, "Error message")
+        true
 
     // Source of tokens. Override this method to modify the way in which the crowdsale ultimately gets and sends its tokens.
     // _beneficiary Address performing the token purchase
@@ -105,9 +107,9 @@ contract Crowdsale =
     // Override for extensions that require an internal state to check for validity (current user contributions, etc.)
     // _beneficiary Address receiving the tokens
     // _amount Value in wei involved in the purchase
-    private function _updatePurchasingState(_beneficiary : address, _amount : int) =
+    private function _updatePurchasingState(_beneficiary : address, _amount : int) : bool =
         // optional override
-        require(true, "Error message")
+        true
 
 
     // Override to extend the way in which ether is converted to tokens.
@@ -126,12 +128,11 @@ contract Crowdsale =
 
         true
 
-    private function isCrowdsale() = 
-        if(Chain.timestamp > state.endDate)
-            require(false, "Crowdsale has ended!")
-            false
-        else
-            true
+    private function isCrowdsale() =
+        require(Chain.timestamp =< state.endDate, "Crowdsale has ended!")
+
+    private function isNotCrowdsale() =
+        require(Chain.timestamp >= state.endDate, "Crowdsale is still running!")
 
     private function isOwner() =
         require(Call.caller == state.owner, "Caller is not an owner!")

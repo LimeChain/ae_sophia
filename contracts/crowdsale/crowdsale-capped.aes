@@ -13,7 +13,7 @@ contract ERC20 =
   public function burn : int => bool
 
 
-contract Crowdsale =
+contract CappedCrowdsale =
 
     record state = { 
         erc20token : ERC20,
@@ -30,7 +30,7 @@ contract Crowdsale =
           rate = _rate,
           aeRaised = 0}
 
-    public function get() : ERC20 =
+    public function getToken() : ERC20 =
         state.erc20token
 
     // the address where funds are collected.
@@ -77,7 +77,7 @@ contract Crowdsale =
     // _beneficiary Address performing the token purchase
     // _amount Value involved in the purchase
     private function _postValidatePurchase(_beneficiary : address, _amount : int) : bool =
-        require(true, "Error message")
+        true
 
     // Source of tokens. Override this method to modify the way in which the crowdsale ultimately gets and sends its tokens.
     // _beneficiary Address performing the token purchase
@@ -96,7 +96,7 @@ contract Crowdsale =
     // _amount Value in wei involved in the purchase
     private function _updatePurchasingState(_beneficiary : address, _amount : int) =
         // optional override
-        require(true, "Error message")
+        true
 
 
     // Override to extend the way in which ether is converted to tokens.

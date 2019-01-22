@@ -35,6 +35,10 @@ async function getContractInstance(contractPath, initState = undefined) {
     return contractInfo.deployedContract;
 }
 
+async function wait(ms) {
+    await new Promise(resolve => setTimeout(resolve, ms));
+}
+
 describe('Crowdsale', () => {
 
     describe('Capped Crowdsale rate 1', async () => {
@@ -189,39 +193,42 @@ describe('Crowdsale', () => {
         });
     });
 
-    describe.only('Mintable crowdsale', async () => {
+    describe('Mintable crowdsale', async () => {
         let contractInstance;
         let anotherClientConfiguration;
         let erc20Instance;
         let deployInfo;
 
         const DEFAULT_RATE = 5;
-        const END_TIME = 1000 * 60 * 1;
+        const END_TIME = 1000 * 60 * 0.5; // 30s.
         let i = 0;
+
+        function getSeconds() {
+            return END_TIME * i++;
+        }
 
         beforeEach(async () => {
             let sf = fs.readFileSync(path.resolve(__dirname, erc20MintablePath), 'utf8');
             erc20Instance = (await getDeployedContractInstance(Universal, config, sf)).deployedContract;
 
             sf = fs.readFileSync(path.resolve(__dirname, mintableCrowdsaleContractPath), 'utf8');
-            deployInfo = await getDeployedContractInstance(Universal, config, sf, `(${publicKeyToHex(erc20Instance.address)}, ${publicKeyToHex(config.ownerKeyPair.publicKey)}, ${DEFAULT_RATE}, ${END_TIME * i})`);
-            i++;
+            deployInfo = await getDeployedContractInstance(Universal, config, sf, `(${publicKeyToHex(erc20Instance.address)}, ${publicKeyToHex(config.ownerKeyPair.publicKey)}, ${DEFAULT_RATE}, ${getSeconds()})`);
             contractInstance = deployInfo.deployedContract;
 
             await executeSmartContractFunction(erc20Instance, 'transferOwnership', `(${publicKeyToHex(contractInstance.address)})`);
         });
 
         it("[NEGATIVE] Should NOT buy tokens when crowdsale has ended.", async () => {
+            // end time is equal to inited time
             await assert.isRejected(executeSmartContractFunction(contractInstance, 'buyTokens', `(45)`, 100), errorMessages.CROWDSALE_HAS_ENDED);
         });
 
-        it("Should return ownership to the origin owner after .", async () => {
-            await assert.isFulfilled(executeSmartContractFunction(contractInstance, 'endCrowdsale'));
-        });
+        it("[NEGATIVE] Should NOT buy tokens after crowdsale end.", async () => {
+            // wait to reach end time
+            await wait(getSeconds() + 1000); // add 1 second above end time limit
 
-        it("[NEGATIVE] Should NOT buy tokens after returning ownership to the origin owner.", async () => {
             await executeSmartContractFunction(contractInstance, 'endCrowdsale');
-            await assert.isRejected(executeSmartContractFunction(contractInstance, 'buyTokens', `(10)`, 100), errorMessages.ONLY_OWNER_CAN_MINT);
+            await assert.isRejected(executeSmartContractFunction(contractInstance, 'buyTokens', `(10)`, 100), errorMessages.CROWDSALE_HAS_ENDED);
 
             let anotherClient = await getAEClient(Universal, config, config.notOwnerKeyPair);
 
@@ -231,11 +238,22 @@ describe('Crowdsale', () => {
         		contractAddress: contractInstance.address
             }
             
-            await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'buyTokens', `(10)`, 100), errorMessages.ONLY_OWNER_CAN_MINT);
+            await assert.isRejected(executeSmartContractFunctionFromAnotherClient(anotherClientConfiguration, 'buyTokens', `(10)`, 100), errorMessages.CROWDSALE_HAS_ENDED);
+        });
+        
+        it("Should return ownership to the origin owner after crowdsale end.", async () => {
+
+            await wait(getSeconds() + 1000); // add 1 second above end time limit
+
+            await assert.isFulfilled(executeSmartContractFunction(contractInstance, 'endCrowdsale'));
         });
 
         it("Should buy tokens before crowdsale end.", async () => {
             await assert.isFulfilled(executeSmartContractFunction(contractInstance, 'buyTokens', `(10)`, 100));
+        });
+
+        it("[NEGATIVE] Should NOT end crowdsale before end date.", async () => {
+            await assert.isRejected(executeSmartContractFunction(contractInstance, 'endCrowdsale'), errorMessages.CROWDSALE_IS_STILL_RUNNING);
         });
     })
 });
