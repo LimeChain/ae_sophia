@@ -26,7 +26,7 @@ contract MintableCrowdsale =
     public stateful function init(_erc20 : ERC20, _wallet : address, _rate : int, seconds : int) = 
         require(_rate > 0, "Should be a positive number!")
         require(_wallet != #0, "Should not be empty address.")
-        // require(_erc20 != #0, "") what is default value ?
+        require(_erc20.address != #0, "Should not be empty address.")
         { erc20token = _erc20,
           wallet = _wallet,
           rate = _rate,
@@ -84,7 +84,7 @@ contract MintableCrowdsale =
     // _amount Value involved in the purchase
     private function _preValidatePurchase(_beneficiary : address , _amount : int) =
             require(_beneficiary != #0, "Should not be empty address.")
-            require(_amount != 0, "Value cannot be zero.")
+            require(_amount > 0, "Value cannot be zero.")
 
     // Validation of an executed purchase. Observe state and use revert statements to undo rollback when valid conditions are not met.
     // _beneficiary Address performing the token purchase
