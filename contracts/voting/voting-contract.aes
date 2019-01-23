@@ -1,0 +1,56 @@
+contract Voting =
+    record state = {
+        candidates : map(address, list(address)),
+        numberOfVotes : map(address, int),
+        voters: map(address, bool)}
+
+    public stateful function init() = 
+        { candidates = {},
+          numberOfVotes = {},
+          voters = {}}
+
+    public function getNumberOfVotes(candidate: address) : int =
+        state.numberOfVotes[candidate]
+        
+    public stateful function vote(candidate: address) =
+        if(hasVoted())
+            abort("Already voted.")
+            
+        put(state{voters[Call.caller] = true})
+        put(state{candidates[candidate] = Call.caller :: state.candidates[candidate]})
+        put(state{numberOfVotes[candidate] = getVotes(candidate) + 1})
+
+    private function hasVoted() : bool =
+        switch(Map.lookup(Call.caller, state.voters))
+            None => false
+            Some(x) => true
+
+    private function getVotes(candidate: address) : int =
+        switch(Map.lookup(candidate, state.numberOfVotes))
+            None => 0
+            Some(x) => x
+
+
+    public function getVoterByIndex(candidate: address, index : int) =
+        let list = getVoters(candidate)
+        getNthElement(index, list)
+
+    private function getVoters(candidate: address) =
+        switch(Map.lookup(candidate, state.candidates))
+            None => []
+            Some(x) => x
+            
+    private function getNthElement(nth, list) =
+        switch(nth)
+            0 => getFirstElement(list)
+            _ => getNthElement(nth - 1, getTailFromList(list))
+    
+    private function getFirstElement(list) : address=
+        switch(list)
+            hd::tl => hd
+    
+    private function getTailFromList(list): list(address) =
+        switch(list)
+            hd::tl => tl
+            [] => []
+    
