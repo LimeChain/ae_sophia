@@ -132,7 +132,7 @@ contract MintableCrowdsale =
         require(Chain.timestamp =< state.endDate, "Crowdsale has ended!")
 
     private function isNotCrowdsale() =
-        require(Chain.timestamp >= state.endDate, "Crowdsale is still running!")
+        require(Chain.timestamp > state.endDate, "Crowdsale is still running!")
 
     private function isOwner() =
         require(Call.caller == state.owner, "Caller is not an owner!")
