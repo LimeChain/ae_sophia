@@ -1,0 +1,55 @@
+contract ToDoManager =
+
+    datatype status = 
+        Initial | 
+        To_do | 
+        In_progress | 
+        Done
+
+    record state = { 
+        index_counter : int,
+        m_index_to_do : map(int, string),
+        m_to_do_status : map(string, status),
+        m_assigned_to_do : map(string, address)}
+
+          
+    public stateful function init() = 
+        { index_counter = 0,
+          m_index_to_do = {},
+          m_to_do_status = {},
+          m_assigned_to_do = {}
+          }
+
+    public stateful function add_to_do(_to_do : string) =
+        require(get_address_by_string(_to_do, state.m_assigned_to_do) == #0, "Already has an assignee")
+        require(get_to_do_status(_to_do) == status.Initial, "Status is not an initial")
+
+        put(state{m_to_do_status[_to_do] = status.To_do})
+        put(state{m_index_to_do[state.index_counter] = _to_do})
+        put(state{index_counter = state.index_counter + 1})
+
+    public stateful function assign_to_do(_to_do : string) =
+
+        require(get_to_do_status(_to_do) == status.To_do) // is this the right status ??? 
+        require(get_address_by_string(_to_do, state.m_assigned_to_do) == #0, "Already assign")
+
+        put(state{m_assigned_to_do[_toDo] = Call.caller})
+        //require(assignedToDo[_toDo] == address(0));
+        //assignedToDo[_toDo] = msg.sender;
+
+    private function get_address_by_string(key : string, _map) : address =
+        switch(Map.lookup(key, _map))
+            None    => #0
+            Some(x) => x
+
+    private function get_to_do_status(_to_do : string) : status =
+        switch(Map.lookup(key, state.m_to_do_status))
+            None    => status.Initial
+            Some(x) => x
+
+    private function only_assignee(_to_do : string) {
+        require(get_address_by_string(_to_do, state.m_assigned_to_do) == Call.caller, "Not an assignee")
+
+    private function require(expression : bool, err : string) =
+        if(!expression) 
+            abort(err)
