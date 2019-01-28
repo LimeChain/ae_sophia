@@ -9,7 +9,6 @@ contract ERC20 =
   public function increaseAllowance : (address, int) => bool
   public function decreaseAllowance : (address, int) => bool
   public function mint : (address, int) => bool
-  // public function safeTransfer : (address, int) => () 
   public function burn : int => bool
 
 
@@ -29,6 +28,9 @@ contract CappedCrowdsale =
           wallet = _wallet,
           rate = _rate,
           aeRaised = 0}
+
+    // datatype event =
+    //     TokensPurchased(indexed address, indexed address, indexed int, string)
 
     public function getToken() : ERC20 =
         state.erc20token
@@ -58,7 +60,7 @@ contract CappedCrowdsale =
         put(state{aeRaised = add(state.aeRaised, _amount)})
 
         _processPurchase(_beneficiary, tokens)
-        // TODO: throw event something like TokensPurchased(Call.caller, _beneficiary, aeAmount, tokens);
+        //Chain.event(TokensPurchased(Call.caller, _beneficiary, _amount, Int.to_str(tokens)))
 
         _updatePurchasingState(_beneficiary, _amount)
 
